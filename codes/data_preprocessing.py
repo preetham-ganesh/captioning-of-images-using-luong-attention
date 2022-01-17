@@ -1,8 +1,7 @@
 # authors_name = 'Preetham Ganesh'
 # project_title = 'Captioning of Images using Luong Attention'
 # email = 'preetham.ganesh2015@gmail.com'
-
-
+import numpy as np
 import tensorflow as tf
 import os
 import unicodedata
@@ -19,7 +18,7 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 
-def retrieve_image_names(data_split: str):
+def retrieve_image_names(data_split: str) -> list:
     """Retrieves image names in the current data split directory.
 
         Args:
@@ -39,7 +38,7 @@ def retrieve_image_names(data_split: str):
 
 
 def preprocess_image(file_name: str,
-                     model: tf.keras.Model):
+                     model: tf.keras.Model) -> np.ndarray:
     """Reads the image, pre-processes it, and uses the pre-trained InceptionV3 to extract features from the
     pre-processed image.
 
@@ -61,7 +60,36 @@ def preprocess_image(file_name: str,
     # Extracts features from the pre-processed image using the pre-trained InceptionV3 model.
     image = model(image)
     image = tf.reshape(image, [image.shape[0], -1, image.shape[3]])
-    return image
+    return image.numpy()
+
+
+def remove_html_markup(sentence: str) -> str:
+    """Removes HTML markup from sentences given as input and returns processed sentences.
+
+        Args:
+            sentence: Input sentence from which HTML markups should be removed (if it exists).
+
+        Returns:
+            Processed sentence from which HTML markups are removed (if it exists).
+    """
+    tag = False
+    quote = False
+    processed_sentence = ''
+    for i in range(len(sentence)):
+        if sentence[i] == '<' and not quote:
+            tag = True
+        elif sentence[i] == '>' and not quote:
+            tag = False
+        elif (sentence[i] == '"' or sentence[i] == "'") and tag:
+            quote = not quote
+        elif not tag:
+            processed_sentence += sentence[i]
+    return processed_sentence
+
+
+def preprocess_sentence(sentence: str):
+
+    sentences = sentence.lower().strip()
 
 
 def main():
