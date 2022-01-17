@@ -145,10 +145,27 @@ def preprocess_dataset(annotations: dict,
         processed_annotations['captions'].append(current_processed_caption)
         save_pickle_file(extracted_features, '../data/processed_data/images', current_image_id)
         no_of_images_processed += 1
-        if no_of_images_processed % 100 == 0:
+        if no_of_images_processed % 10 == 0:
             print('No. of images processed: {}'.format(no_of_images_processed))
     processed_annotations_df = pd.DataFrame(processed_annotations, columns=['image_ids', 'captions'])
     return processed_annotations_df
+
+
+def dataset_split_save(train_dataset: pd.DataFrame,
+                       validation_dataset: pd.DataFrame) -> None:
+    """Splits the original validation dataset and exports the dataset to CSV files.
+
+        Args:
+            train_dataset: A pandas dataframe which contains updated annotations for the train dataset.
+            validation_dataset: A pandas dataframe which contains updated annotations for the validation dataset.
+
+        Returns:
+            None.
+    """
+    train_dataset.to_csv('../data/processed_data/annotations/train.csv', index=False)
+    validation_dataset, test_dataset = train_test_split(validation_dataset, test_size=0.5)
+    validation_dataset.to_csv('../data/processed_data/annotations/validation.csv', index=False)
+    test_dataset.to_csv('../data/processed_data/annotations/test.csv', index=False)
 
 
 def main():
@@ -158,9 +175,16 @@ def main():
     print()
     new_train_annotations = preprocess_dataset(original_train_annotations, 'train')
     print()
+    print('Finished processing images in train dataset')
+    print()
     original_validation_annotations = load_json_file('../data/original_data/annotations', 'captions_val2017.json')
+    print('Loaded the annotations for the validation dataset')
+    print()
     new_validation_annotations = preprocess_dataset(original_validation_annotations, 'val')
-    print(new_validation_annotations.head())
+    print()
+    print('Finished processing images in the validation dataset')
+    dataset_split_save(new_train_annotations, new_validation_annotations)
+    print()
 
 
 if __name__ == '__main__':
