@@ -1,6 +1,8 @@
 # authors_name = 'Preetham Ganesh'
 # project_title = 'Captioning of Images using Luong Attention'
 # email = 'preetham.ganesh2015@gmail.com'
+
+
 import numpy as np
 import tensorflow as tf
 import os
@@ -10,6 +12,7 @@ import logging
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from utils import load_json_file
+from utils import save_pickle_file
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -18,45 +21,26 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 
-def retrieve_image_names(data_split: str) -> list:
-    """Retrieves image names in the current data split directory.
-
-        Args:
-            data_split: String which contains the data split name i.e. train or val.
-
-        Returns:
-            List of image names with their corresponding path.
-    """
-    directory_path = '../data/original_data'
-    image_names = []
-    # Iterates across image names in the current data split directory.
-    for i in os.listdir('{}/{}2017'.format(directory_path, data_split)):
-        # Checks if the current image name is classified as file. If yes, then appended to the final list of images.
-        if os.path.isfile('{}/{}2017/{}'.format(directory_path, data_split, i)):
-            image_names.append('{}/{}2017/{}'.format(directory_path, data_split, i))
-    return image_names
-
-
-def preprocess_image(file_name: str,
+def preprocess_image(image_path: str,
                      model: tf.keras.Model) -> np.ndarray:
     """Reads the image, pre-processes it, and uses the pre-trained InceptionV3 to extract features from the
     pre-processed image.
 
         Args:
-            file_name: Name of the image used to read the image.
+            image_path: Path to the image that should be read.
             model: The pre-trained InceptionV3 model used to extract features from the image.
 
         Returns:
             The features extracted from the image using the pre-trained InceptionV3 model.
     """
     # Reads image using the file name
-    image = tf.io.read_file(file_name)
+    image = tf.io.read_file(image_path)
     # Decodes the read image into a RGB image and resizes it to the size of (299, 299).
     image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.resize(image, (299, 299))
     # Pre-processes the resized image based on InceptionV3 input requirements.
     image = tf.keras.applications.inception_v3.preprocess_input(image)
-    image = tf.convert_to_sensor([image])
+    image = tf.convert_to_tensor([image])
     # Extracts features from the pre-processed image using the pre-trained InceptionV3 model.
     image = model(image)
     image = tf.reshape(image, [image.shape[0], -1, image.shape[3]])
@@ -121,11 +105,62 @@ def preprocess_sentence(sentence: str) -> str:
     return sentence
 
 
+def preprocess_dataset(annotations: dict,
+                       data_split: str) -> pd.DataFrame:
+    """Pre-processes the annotations for the current split by processing the image to extract features using the
+    pre-trained InceptionV3 model, processing the caption to remove unwanted characters, lowercase the letter, etc.
+    Saves the extracted features for each image and returns a dataframe that contains processed captions for the data
+    split.
+
+        Args:
+            annotations: Dictionary which contains the details for each image, such as image_id and caption.
+            data_split: Split the annotations belong to i.e., train or val.
+
+        Returns:
+            A Pandas dataframe that contains the updated annotations.
+    """
+    # Loads the InceptionV3 model pre-trained on Imagenet dataset.
+    model = tf.keras.applications.InceptionV3(include_top=False, weights='imagenet')
+    # Changes the output from the last layer to the last before layer.
+    new_model = tf.keras.Model(model.input, model.layers[-1].output)
+    new_model.trainable = False
+    no_of_images_processed = 0
+    annotations_df = pd.DataFrame(annotations['annotations'])
+    processed_annotations = {'image_ids': [], 'captions': []}
+    # Iterates across the indexes in annotations_df
+    for i in range(len(annotations_df)):
+        current_image_id = annotations_df['image_id'].iloc[i]
+        if current_image_id in processed_annotations['image_ids']:
+            continue
+        new_image_id = '{}{}'.format(''.join(['0' for _ in range(6 - len(str(current_image_id)))]),
+                                     str(current_image_id))
+        image_path = '../data/original_data/{}2017/000000{}.jpg'.format(data_split, new_image_id)
+        # Pre-process the caption for the current image.
+        current_processed_caption = preprocess_sentence(annotations_df['caption'].iloc[i])
+        if current_processed_caption == '':
+            continue
+        # Extracts features from the current image.
+        extracted_features = preprocess_image(image_path, new_model)
+        processed_annotations['image_ids'].append(current_image_id)
+        processed_annotations['captions'].append(current_processed_caption)
+        save_pickle_file(extracted_features, '../data/processed_data/images', current_image_id)
+        no_of_images_processed += 1
+        if no_of_images_processed % 100 == 0:
+            print('No. of images processed: {}'.format(no_of_images_processed))
+    processed_annotations_df = pd.DataFrame(processed_annotations, columns=['image_ids', 'captions'])
+    return processed_annotations_df
+
+
 def main():
-    original_validation_captions = load_json_file('../data/original_data/annotations', 'captions_val2017.json')
-    #print(original_validation_captions)
-    original_validation_image_names = retrieve_image_names('val')
-    print(preprocess_sentence('Preetham was the 1st student in     class <html> slkdfjslkj </html>'))
+    print()
+    original_train_annotations = load_json_file('../data/original_data/annotations', 'captions_train2017.json')
+    print('Loaded the annotations for the train dataset.')
+    print()
+    new_train_annotations = preprocess_dataset(original_train_annotations, 'train')
+    print()
+    original_validation_annotations = load_json_file('../data/original_data/annotations', 'captions_val2017.json')
+    new_validation_annotations = preprocess_dataset(original_validation_annotations, 'val')
+    print(new_validation_annotations.head())
 
 
 if __name__ == '__main__':
