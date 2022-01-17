@@ -87,15 +87,45 @@ def remove_html_markup(sentence: str) -> str:
     return processed_sentence
 
 
-def preprocess_sentence(sentence: str):
+def preprocess_sentence(sentence: str) -> str:
+    """Pre-processes the given sentence to remove unwanted characters, lowercase the sentence, etc., and returns the
+    processed sentence.
 
-    sentences = sentence.lower().strip()
+        Args:
+            sentence: Input sentence which needs to be processed.
+
+        Returns:
+            The processed sentence that does not have unwanted characters, lowercase letters, and many more.
+    """
+    # Removes HTML marksups from the sentence.
+    sentence = remove_html_markup(sentence)
+    # Lowercases the letters in the sentence, and removes spaces from the beginning and the end of the sentence.
+    sentence = sentence.lower().strip()
+    # Converts UNICODE characters to ASCII format.
+    sentence = ''.join(i for i in unicodedata.normalize('NFD', sentence) if unicodedata.category(i) != 'Mn')
+    # Removes characters which does are not in -!$&(),./%0-9:;?a-z¿¡€'
+    sentence = re.sub(r"[^-!$&(),./%0-9:;?a-z¿¡€'\"]+", " ", sentence)
+    # Converts words or tokens like 1st to 1 st, to simplify the tokens.
+    sentence = re.sub(r'(\d)th', r'\1 th', sentence, flags=re.I)
+    sentence = re.sub(r'(\d)st', r'\1 st', sentence, flags=re.I)
+    sentence = re.sub(r'(\d)rd', r'\1 rd', sentence, flags=re.I)
+    sentence = re.sub(r'(\d)nd', r'\1 nd', sentence, flags=re.I)
+    # Adds space between punctuations to simplify the tokens.
+    punctuations = list("-!$&(),./%:;?¿¡€'")
+    for i in range(len(punctuations)):
+        sentence = sentence.replace(punctuations[i], ' {} '.format(punctuations[i]))
+    # Removes spaces from the beginning and the end of the sentence
+    sentence = sentence.strip()
+    # Removes unwanted spaces from the sentence.
+    sentence = re.sub(r'\s+', ' ', sentence)
+    return sentence
 
 
 def main():
     original_validation_captions = load_json_file('../data/original_data/annotations', 'captions_val2017.json')
+    #print(original_validation_captions)
     original_validation_image_names = retrieve_image_names('val')
-    print(original_validation_image_names)
+    print(preprocess_sentence('Preetham was the 1st student in     class <html> slkdfjslkj </html>'))
 
 
 if __name__ == '__main__':
