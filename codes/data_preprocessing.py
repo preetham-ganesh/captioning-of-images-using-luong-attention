@@ -163,7 +163,10 @@ def dataset_split_save(train_dataset: pd.DataFrame,
             None.
     """
     train_dataset.to_csv('../data/processed_data/annotations/train.csv', index=False)
+    print('No. of rows in the new train dataset: {}'.format(len(train_dataset)))
     validation_dataset, test_dataset = train_test_split(validation_dataset, test_size=0.5)
+    print('No. of rows in the new validation dataset: {}'.format(len(validation_dataset)))
+    print('No. of rows in the new test dataset: {}'.format(len(test_dataset)))
     validation_dataset.to_csv('../data/processed_data/annotations/validation.csv', index=False)
     test_dataset.to_csv('../data/processed_data/annotations/test.csv', index=False)
 
@@ -183,6 +186,7 @@ def main():
     new_validation_annotations = preprocess_dataset(original_validation_annotations, 'val')
     print()
     print('Finished processing images in the validation dataset')
+    print()
     dataset_split_save(new_train_annotations, new_validation_annotations)
     print()
 
