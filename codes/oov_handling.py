@@ -40,16 +40,36 @@ def text_stats(processed_captions_text: str) -> tuple:
         A tuple which contains unique characters and unique words from the dataset.
     """
     unique_letters = Counter(processed_captions_text)
-    print('No. of unique characters in text: {}'.format(len(unique_letters.keys())))
     unique_words = Counter(processed_captions_text.split(' '))
-    print('No. of unique words in text: {}'.format(len(unique_words.keys())))
     return unique_letters, unique_words
+
+
+def find_rare_words(words_count: dict) -> list:
+    """Identifies rare words in the dataset. A word is considered rare if the count is 1 or if the word is not
+    classified as digit or if word is a classified as alphabets.
+
+    Args:
+        words_count: A dictionary which contains the unique words in the dataset and the number of times it occured in
+                     the dataset.
+
+    Returns:
+        A list which contains rare words in the dataset.
+    """
+    rare_words = list()
+    for word in words_count.keys():
+        if words_count[word] == 1 or not word.isdigit() or word.isalpha():
+            rare_words.append(word)
+    return rare_words
 
 
 def main():
     print()
     processed_train_dataset = pd.read_csv('../data/processed_data/annotations/train.csv')
+    print('No. of captions in the processed train dataset: {}'.format(len(processed_train_dataset)))
     processed_train_captions_text = lines_to_text(processed_train_dataset['captions'], '\n')
+    print()
+    processed_train_captions_letters, processed_train_captions_words = text_stats(processed_train_captions_text)
+
 
 
 
