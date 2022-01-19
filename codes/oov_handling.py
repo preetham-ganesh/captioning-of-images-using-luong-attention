@@ -61,10 +61,13 @@ def find_rare_words(words_count: dict) -> dict:
     """
     rare_words = list()
     for word in words_count.keys():
-        if words_count[word] == 1 and not word.isdigit() and word.isalpha():
+        # If word count is 1, word is not classified as digit and word is classified as alphabets then current word is
+        # appended to rare words.
+        if words_count[word] == 1 and word.isalpha():
             rare_words.append(word)
     new_words_count = dict()
     for word in words_count.keys():
+        # If current word is not in rare word, then added to frequent words dictionary.
         if word not in rare_words:
             new_words_count[word] = words_count[word]
     return new_words_count
