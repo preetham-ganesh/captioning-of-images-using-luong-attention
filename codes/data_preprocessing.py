@@ -1,5 +1,5 @@
 # authors_name = 'Preetham Ganesh'
-# project_title = 'Captioning of Images using Luong Attention'
+# project_title = 'Captioning of Images using Attention Mechanism'
 # email = 'preetham.ganesh2015@gmail.com'
 
 
@@ -23,15 +23,17 @@ tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 def preprocess_image(image_path: str,
                      model: tf.keras.Model) -> np.ndarray:
-    """Reads the image, pre-processes it, and uses the pre-trained InceptionV3 to extract features from the
+    """Pre-processes the given image to extract features.
+
+    Reads the image, pre-processes it, and uses the pre-trained InceptionV3 to extract features from the
     pre-processed image.
 
-        Args:
-            image_path: Path to the image that should be read.
-            model: The pre-trained InceptionV3 model used to extract features from the image.
+    Args:
+        image_path: Path to the image that should be read.
+        model: The pre-trained InceptionV3 model used to extract features from the image.
 
-        Returns:
-            The features extracted from the image using the pre-trained InceptionV3 model.
+    Returns:
+        The features extracted from the image using the pre-trained InceptionV3 model.
     """
     # Reads image using the file name
     image = tf.io.read_file(image_path)
@@ -50,11 +52,11 @@ def preprocess_image(image_path: str,
 def remove_html_markup(sentence: str) -> str:
     """Removes HTML markup from sentences given as input and returns processed sentences.
 
-        Args:
-            sentence: Input sentence from which HTML markups should be removed (if it exists).
+    Args:
+        sentence: Input sentence from which HTML markups should be removed (if it exists).
 
-        Returns:
-            Processed sentence from which HTML markups are removed (if it exists).
+    Returns:
+        Processed sentence from which HTML markups are removed (if it exists).
     """
     tag = False
     quote = False
@@ -72,14 +74,16 @@ def remove_html_markup(sentence: str) -> str:
 
 
 def preprocess_sentence(sentence: str) -> str:
-    """Pre-processes the given sentence to remove unwanted characters, lowercase the sentence, etc., and returns the
+    """Pre-processes a sentence.
+
+    Pre-processes the given sentence to remove unwanted characters, lowercase the sentence, etc., and returns the
     processed sentence.
 
-        Args:
-            sentence: Input sentence which needs to be processed.
+    Args:
+        sentence: Input sentence which needs to be processed.
 
-        Returns:
-            The processed sentence that does not have unwanted characters, lowercase letters, and many more.
+    Returns:
+        The processed sentence that does not have unwanted characters, lowercase letters, and many more.
     """
     # Removes HTML marksups from the sentence.
     sentence = remove_html_markup(sentence)
@@ -107,17 +111,19 @@ def preprocess_sentence(sentence: str) -> str:
 
 def preprocess_dataset(annotations: dict,
                        data_split: str) -> pd.DataFrame:
-    """Pre-processes the annotations for the current split by processing the image to extract features using the
+    """Pre-processes the dataset.
+
+    Pre-processes the annotations for the current split by processing the image to extract features using the
     pre-trained InceptionV3 model, processing the caption to remove unwanted characters, lowercase the letter, etc.
     Saves the extracted features for each image and returns a dataframe that contains processed captions for the data
     split.
 
-        Args:
-            annotations: Dictionary which contains the details for each image, such as image_id and caption.
-            data_split: Split the annotations belong to i.e., train or val.
+    Args:
+        annotations: Dictionary which contains the details for each image, such as image_id and caption.
+        data_split: Split the annotations belong to i.e., train or val.
 
-        Returns:
-            A Pandas dataframe that contains the updated annotations.
+    Returns:
+        A Pandas dataframe that contains the updated annotations.
     """
     # Loads the InceptionV3 model pre-trained on Imagenet dataset.
     model = tf.keras.applications.InceptionV3(include_top=False, weights='imagenet')
@@ -155,12 +161,12 @@ def dataset_split_save(train_dataset: pd.DataFrame,
                        validation_dataset: pd.DataFrame) -> None:
     """Splits the original validation dataset and exports the dataset to CSV files.
 
-        Args:
-            train_dataset: A pandas dataframe which contains updated annotations for the train dataset.
-            validation_dataset: A pandas dataframe which contains updated annotations for the validation dataset.
+    Args:
+        train_dataset: A pandas dataframe which contains updated annotations for the train dataset.
+        validation_dataset: A pandas dataframe which contains updated annotations for the validation dataset.
 
-        Returns:
-            None.
+    Returns:
+        None.
     """
     train_dataset.to_csv('../data/processed_data/annotations/train.csv', index=False)
     print('No. of rows in the new train dataset: {}'.format(len(train_dataset)))
