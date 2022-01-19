@@ -5,6 +5,7 @@
 
 import pandas as pd
 from collections import Counter
+from utils import save_pickle_file
 
 
 def lines_to_text(sentences_list: list,
@@ -98,19 +99,57 @@ def converts_rare_words(sentences: list,
     return converted_sentences
 
 
+def convert_data_save(processed_dataset: pd.DataFrame,
+                      oov_handled_captions: list,
+                      data_split: str) -> None:
+    """Adds the oov-handled captions to the processed dataframe and saves the new dataframe as a CSV file.
+
+    Args:
+        processed_dataset: A pandas dataframe that contains the updated annotations for the current data split.
+        oov_handled_captions: An updated list of sentences which contains only the frequent words and the common unknown
+                              token ('@@@').
+        data_split: Split the annotations belong to i.e., train, val or test.
+
+    Returns:
+        None.
+    """
+    processed_dataset['captions'] = oov_handled_captions
+    processed_dataset.to_csv('../data/oov_handled_data/annotations/{}.csv'.format(data_split), index=False)
+
+
 def main():
     print()
     processed_train_dataset = pd.read_csv('../data/processed_data/annotations/train.csv')
+    processed_validation_dataset = pd.read_csv('../data/processed_data/annotations/validation.csv')
+    processed_test_dataset = pd.read_csv('../data/processed_data/annotations/test.csv')
     print('No. of captions in the processed train dataset: {}'.format(len(processed_train_dataset)))
-    processed_train_captions_text = lines_to_text(processed_train_dataset['captions'], '\n')
+    print('No. of captions in the processed validation dataset: {}'.format(len(processed_validation_dataset)))
+    print('No. of captions in the processed test dataset: {}'.format(len(processed_test_dataset)))
     print()
+    processed_train_captions_text = lines_to_text(processed_train_dataset['captions'], '\n')
     processed_train_captions_letters, processed_train_captions_words = text_stats(processed_train_captions_text)
-    print('No. of unique characters in the processed train dataset: {}'.format(len(
-        processed_train_captions_letters.keys())))
+    print('No. of unique characters in the processed train dataset: {}'.format(
+        len(processed_train_captions_letters.keys())))
     print('No. of unique words in the processed train dataset: {}'.format(len(processed_train_captions_words.keys())))
     print()
-    processed_train_rare_words = find_rare_words(processed_train_captions_words)
-    print('No. of rare words in the processed train dataset: {}'.format(len(processed_train_rare_words)))
+    processed_train_frequent_words = find_rare_words(processed_train_captions_words)
+    print('No. of frequent words in the processed train dataset: {}'.format(len(processed_train_frequent_words)))
+    print()
+    oov_handled_train_captions = converts_rare_words(list(processed_train_dataset['captions']),
+                                                     processed_train_frequent_words)
+    convert_data_save(processed_train_dataset, oov_handled_train_captions, 'train')
+    print('Removed rare words in the train dataset and converted it into a CSV file.')
+    oov_handled_validation_captions = converts_rare_words(list(processed_validation_dataset['captions']),
+                                                          processed_train_frequent_words)
+    convert_data_save(processed_validation_dataset, oov_handled_validation_captions, 'validation')
+    print('Removed rare words in the validation dataset and converted it into a CSV file.')
+    oov_handled_test_captions = converts_rare_words(list(processed_test_dataset['captions']),
+                                                    processed_train_frequent_words)
+    convert_data_save(processed_test_dataset, oov_handled_test_captions, 'test')
+    print('Removed rare words in the test dataset and converted it into a CSV file.')
+    print()
+    save_pickle_file(list(processed_train_frequent_words.keys()), '../results/', 'train_captions_frequent_words')
+    print('Saved train_captions_frequent_words list at ../results')
     print()
 
 
