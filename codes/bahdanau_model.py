@@ -77,10 +77,9 @@ class Decoder1(tf.keras.Model):
         attention_layer: Bahdanau attention model which is used to emphasize the important features at different
                          timesteps.
         embedding_layer: Converts indexes from target vocabulary into dense vectors of fixed size.
-        rnn_layer: An Long Short-Term Memory layer used to learn dependencies in the given sequence.
-        dense_layer_1: Fully connected layer which encodes the output sequence from the rnn layer.
+        rnn_layer: A Long Short-Term Memory layer used to learn dependencies in the given sequence.
+        dense_layer: Fully connected layer which encodes output sequence from the rnn layer to the target vocab size.
         dropout_layer: Dropout layer which prevents the model from overfitting on the training dataset.
-        dense_layer_2: Fully connected layer which encodes the output sequence from the dropout layer.
     """
 
     def __init__(self, embedding_size: int,
@@ -93,9 +92,8 @@ class Decoder1(tf.keras.Model):
         self.attention_layer = BahdanauAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
-        self.dense_layer_1 = tf.keras.layers.Dense(rnn_size, activation='tanh')
+        self.dense_layer = tf.keras.layers.Dense(target_vocab_size)
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
-        self.dense_layer_2 = tf.keras.layers.Dense(target_vocab_size)
 
     def call(self, x: tf.Tensor,
              encoder_out: tf.Tensor,
@@ -111,7 +109,64 @@ class Decoder1(tf.keras.Model):
         x = self.dropout_layer(x, training=training)
         # Reshape current output to (batch_size * max_length, hidden_size).
         x = tf.reshape(x, (-1, x.shape[2]))
-        x = self.dense_layer_2(x)
+        x = self.dense_layer(x)
+        return x, [hidden_state_h, hidden_state_c]
+
+    def initialize_hidden_states(self, batch_size: int,
+                                 rnn_size: int) -> list:
+        """Initializes hidden states h & c in the RNN layer for each batch."""
+        hidden_state_h = tf.zeros((batch_size, rnn_size))
+        hidden_state_c = tf.zeros((batch_size, rnn_size))
+        return [hidden_state_h, hidden_state_c]
+
+
+class Decoder2(tf.keras.Model):
+    """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Bahdanau
+    Attention.
+
+    Args:
+        attention_layer: Bahdanau attention model which is used to emphasize the important features at different
+                         timesteps.
+        embedding_layer: Converts indexes from target vocabulary into dense vectors of fixed size.
+        rnn_layer_1: A Long Short-Term Memory layer used to learn dependencies in the given sequence.
+        rnn_layer_2: A Long Short-Term Memory layer used to learn dependencies in the given sequence.
+        dense_layer: Fully connected layer which encodes output sequence from the rnn layer to the target vocab size.
+        dropout_layer: Dropout layer which prevents the model from overfitting on the training dataset.
+    """
+
+    def __init__(self, embedding_size: int,
+                 rnn_size: int,
+                 target_vocab_size: int,
+                 dropout_rate: float) -> None:
+        """Initializes the layers in the instance based on the embedding size, rnn_size, target_vocab_size, and
+        dropout_rate."""
+        super(Decoder1, self).__init__()
+        self.attention_layer = BahdanauAttention(rnn_size)
+        self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
+        self.rnn_layer_1 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
+        self.rnn_layer_2 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
+        self.dense_layer = tf.keras.layers.Dense(target_vocab_size)
+        self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
+
+    def call(self, x: tf.Tensor,
+             encoder_out: tf.Tensor,
+             hidden_states: list,
+             training: bool) -> tuple:
+        """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
+        model"""
+        context_vector = self.attention_layer(encoder_out, hidden_states[0], hidden_states[1])
+        x = self.embedding_layer(x)
+        # Concatenates context vector with embedding output.
+        x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)
+        x, hidden_state_h, hidden_state_c = self.rnn_layer_1(x)
+        x = self.dropout_layer(x, training=training)
+        # Concatenates context vector with rnn_layer_1 output.
+        x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)
+        x, hidden_state_h, hidden_state_c = self.rnn_layer_2(x)
+        x = self.dropout_layer(x, training=training)
+        # Reshape current output to (batch_size * max_length, hidden_size).
+        x = tf.reshape(x, (-1, x.shape[2]))
+        x = self.dense_layer(x)
         return x, [hidden_state_h, hidden_state_c]
 
     def initialize_hidden_states(self, batch_size: int,
