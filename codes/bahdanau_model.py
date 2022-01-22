@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 class Encoder(tf.keras.Model):
-    """Encodes extracted features for future interpretation.
+    """Encodes features extracts from images for future interpretation.
 
     The features extracted from the images using the pre-trained InceptionV3 model are encoded to the embedding size by
     passing it into a fully connected layer. The encoded output will be passed on to the Bahdanau Attention layer for
@@ -32,3 +32,19 @@ class Encoder(tf.keras.Model):
         return x
 
 
+class BahdanauAttention(tf.keras.Model):
+    """A local attention model which uses the input and previous timestep's output to predict the output for the current
+    timestep.
+
+    Args:
+        w_1: Weights for the Encoder's output
+        w_2: Weights for the Encoder's hidden state h.
+        w_3: Weights for the Encoder's hidden state c.
+        v: Final layer which sums output from w_1, w_2, & w_3.
+    """
+    def __init__(self, dense_size: int):
+        super(BahdanauAttention, self).__init__()
+        self.w_1 = tf.keras.layers.Dense(dense_size)
+        self.w_2 = tf.keras.layers.Dense(dense_size)
+        self.w_3 = tf.keras.layers.Dense(dense_size)
+        self.v = tf.keras.layers.Dense(1)
