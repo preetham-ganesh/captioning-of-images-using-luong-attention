@@ -33,7 +33,7 @@ class Encoder(tf.keras.Model):
         return x
 
 
-class BahdanauAttention(tf.keras.Model):
+class BahdanauAttention(tf.keras.layers.Layer):
     """A local attention model which uses the input and previous timestep's output to predict the output for the current
     timestep.
 
@@ -96,3 +96,20 @@ class Decoder1(tf.keras.Model):
         self.dense_layer_1 = tf.keras.layers.Dense(rnn_size, activation='tanh')
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
         self.dense_layer_2 = tf.keras.layers.Dense(target_vocab_size)
+
+    def call(self, x: tf.Tensor,
+             encoder_out: tf.Tensor,
+             hidden_states: list,
+             training: bool) -> tuple:
+        """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
+        model"""
+        context_vector = self.attention_layer(encoder_out, hidden_states[0], hidden_states[1])
+        x = self.embedding_layer(x)
+        # Concatenates context vector with embedding output.
+        x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)
+        x, hidden_state_h, hidden_state_c = self.rnn_layer(x)
+        x = self.dropout_layer(x, training=training)
+        # Reshape current output to (batch_size * max_length, hidden_size).
+        x = tf.reshape(x, (-1, x.shape[2]))
+        x = self.dense_layer_2(x)
+        return x, [hidden_state_h, hidden_state_c]
