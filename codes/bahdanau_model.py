@@ -20,7 +20,8 @@ class Encoder(tf.keras.Model):
 
     def __init__(self, embedding_size: int,
                  dropout_rate: float) -> None:
-        """Initializes the instance based on the embedding size, and dropout_rate."""
+        """Initializes the layers in the instance based on the embedding size, and dropout_rate."""
+        super(Encoder, self).__init__()
         self.dense_layer = tf.keras.layers.Dense(embedding_size)
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
 
@@ -42,9 +43,27 @@ class BahdanauAttention(tf.keras.Model):
         w_3: Weights for the Encoder's hidden state c.
         v: Final layer which sums output from w_1, w_2, & w_3.
     """
+
     def __init__(self, dense_size: int):
+        """Initializes the layers in the instance based on the dense size"""
         super(BahdanauAttention, self).__init__()
         self.w_1 = tf.keras.layers.Dense(dense_size)
         self.w_2 = tf.keras.layers.Dense(dense_size)
         self.w_3 = tf.keras.layers.Dense(dense_size)
         self.v = tf.keras.layers.Dense(1)
+
+    def call(self, encoder_out: tf.Tensor,
+             hidden_state_h: tf.Tensor,
+             hidden_state_c: tf.Tensor):
+        """Encoder output, and hidden states are passed the through the layers in the Bahdanau Attention model."""
+        # Inserts a length 1 at axis 1 in the hidden states.
+        hidden_state_h_time = tf.expand_dims(hidden_state_h, 1)
+        hidden_state_c_time = tf.expand_dims(hidden_state_c, 1)
+        # Provides un-normalized score for each feature.
+        attention_hidden_layer = self.v(tf.nn.tanh(self.w_1(encoder_out) + self.w_2(hidden_state_h_time) +
+                                                   self.w_3(hidden_state_c_time)))
+        # Uses softmax on output from attention_hidden_layer to predict the output.
+        attention_out = tf.nn.softmax(attention_hidden_layer, axis=1)
+        context_vector = attention_out * encoder_out
+        context_vector = tf.reduce_sum(context_vector, axis=1)
+        return context_vector
