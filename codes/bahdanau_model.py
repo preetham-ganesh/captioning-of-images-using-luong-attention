@@ -113,3 +113,10 @@ class Decoder1(tf.keras.Model):
         x = tf.reshape(x, (-1, x.shape[2]))
         x = self.dense_layer_2(x)
         return x, [hidden_state_h, hidden_state_c]
+
+    def initialize_hidden_states(self, batch_size: int,
+                                 rnn_size: int) -> list:
+        """Initializes hidden states h & c in the RNN layer for each batch."""
+        hidden_state_h = tf.zeros((batch_size, rnn_size))
+        hidden_state_c = tf.zeros((batch_size, rnn_size))
+        return [hidden_state_h, hidden_state_c]
