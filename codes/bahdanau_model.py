@@ -44,7 +44,7 @@ class BahdanauAttention(tf.keras.Model):
         v: Final layer which sums output from w_1, w_2, & w_3.
     """
 
-    def __init__(self, dense_size: int):
+    def __init__(self, dense_size: int) -> None:
         """Initializes the layers in the instance based on the dense size"""
         super(BahdanauAttention, self).__init__()
         self.w_1 = tf.keras.layers.Dense(dense_size)
@@ -54,7 +54,7 @@ class BahdanauAttention(tf.keras.Model):
 
     def call(self, encoder_out: tf.Tensor,
              hidden_state_h: tf.Tensor,
-             hidden_state_c: tf.Tensor):
+             hidden_state_c: tf.Tensor) -> tf.Tensor:
         """Encoder output, and hidden states are passed the through the layers in the Bahdanau Attention model."""
         # Inserts a length 1 at axis 1 in the hidden states.
         hidden_state_h_time = tf.expand_dims(hidden_state_h, 1)
@@ -67,3 +67,32 @@ class BahdanauAttention(tf.keras.Model):
         context_vector = attention_out * encoder_out
         context_vector = tf.reduce_sum(context_vector, axis=1)
         return context_vector
+
+
+class Decoder1(tf.keras.Model):
+    """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Bahdanau
+    Attention.
+
+    Args:
+        attention_layer: Bahdanau attention model which is used to emphasize the important features at different
+                         timesteps.
+        embedding_layer: Converts indexes from target vocabulary into dense vectors of fixed size.
+        rnn_layer: An Long Short-Term Memory layer used to learn dependencies in the given sequence.
+        dense_layer_1: Fully connected layer which encodes the output sequence from the rnn layer.
+        dropout_layer: Dropout layer which prevents the model from overfitting on the training dataset.
+        dense_layer_2: Fully connected layer which encodes the output sequence from the dropout layer.
+    """
+
+    def __init__(self, embedding_size: int,
+                 rnn_size: int,
+                 target_vocab_size: int,
+                 dropout_rate: float) -> None:
+        """Initializes the layers in the instance based on the embedding size, rnn_size, target_vocab_size, and
+        dropout_rate."""
+        super(Decoder1, self).__init__()
+        self.attention_layer = BahdanauAttention(rnn_size)
+        self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
+        self.rnn_layer = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
+        self.dense_layer_1 = tf.keras.layers.Dense(rnn_size, activation='tanh')
+        self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
+        self.dense_layer_2 = tf.keras.layers.Dense(target_vocab_size)
