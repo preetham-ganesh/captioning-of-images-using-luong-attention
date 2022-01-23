@@ -56,3 +56,19 @@ class Decoder1(tf.keras.Model):
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
         self.dense_layer_2 = tf.keras.layers.Dense(target_vocab_size)
 
+    def call(self, x: tf.Tensor,
+             hidden_states: list,
+             encoder_out: tf.Tensor,
+             training: bool) -> tuple:
+        """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
+        model"""
+        x = self.embedding_layer(x)
+        x, h, c = self.rnn_layer(x, initial_state=hidden_states)
+        x = self.dropout_layer(x, training=training)
+        context_vector = self.attention_layer(encoder_out, x)
+        # Concatenates context vector and output from rnn_layer after reducing dimension in axis 1.
+        x = tf.concat([tf.squeeze(context_vector, 1), tf.squeeze(x, 1)], 1)
+        x = self.dense_layer_1(x)
+        x = self.dropout_layer(x, training=training)
+        x = self.dense_layer_2(x)
+        return x, [h, c]
