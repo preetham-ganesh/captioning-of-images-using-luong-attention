@@ -55,7 +55,7 @@ class BahdanauAttention(tf.keras.layers.Layer):
     def call(self, encoder_out: tf.Tensor,
              hidden_state_h: tf.Tensor,
              hidden_state_c: tf.Tensor) -> tf.Tensor:
-        """Encoder output, and hidden states are passed the through the layers in the Bahdanau Attention model."""
+        """Encoder output, and hidden states are passed through the layers in the Bahdanau Attention model."""
         # Inserts a length 1 at axis 1 in the hidden states.
         hidden_state_h_time = tf.expand_dims(hidden_state_h, 1)
         hidden_state_c_time = tf.expand_dims(hidden_state_c, 1)
