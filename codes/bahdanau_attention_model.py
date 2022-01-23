@@ -238,4 +238,3 @@ class Decoder3(tf.keras.Model):
         hidden_state_h = tf.zeros((batch_size, rnn_size))
         hidden_state_c = tf.zeros((batch_size, rnn_size))
         return [hidden_state_h, hidden_state_c]
-    
