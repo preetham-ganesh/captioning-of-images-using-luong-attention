@@ -3,6 +3,7 @@
 # email = 'preetham.ganesh2015@gmail.com'
 
 
+import tensorflow as tf
 import pickle
 import json
 import numpy as np
@@ -78,3 +79,19 @@ def load_pickle_file(directory_path: str,
         dictionary = pickle.load(f)
     f.close()
     return dictionary
+
+
+def convert_dataset(dataset: dict) -> tuple:
+    """Converts current datasets into 2 tensors for image ids and captions. Pads tensors for captions to ensure uniform
+    size.
+
+    Args:
+        dataset: Image ids and captions for the current data split.
+
+    Returns:
+        A tuple which contains tensors for image ids and captions.
+    """
+    image_ids = tf.convert_to_tensor(dataset['image_ids'])
+    captions = tf.convert_to_tensor(dataset['captions'])
+    captions = tf.keras.preprocessing.sequence.pad_sequences(captions, padding='post')
+    return image_ids, captions
