@@ -7,6 +7,7 @@ import tensorflow as tf
 import pickle
 import json
 import numpy as np
+import os
 
 
 def load_json_file(directory_path: str,
@@ -82,8 +83,8 @@ def load_pickle_file(directory_path: str,
 
 
 def convert_dataset(dataset: dict) -> tuple:
-    """Converts current datasets into 2 tensors for image ids and captions. Pads tensors for captions to ensure uniform
-    size.
+    """Filters captions with length less than or equal to 40. Converts current datasets into 2 tensors for image ids and
+    captions. Pads tensors for captions to ensure uniform size.
 
     Args:
         dataset: Image ids and captions for the current data split.
@@ -91,7 +92,49 @@ def convert_dataset(dataset: dict) -> tuple:
     Returns:
         A tuple which contains tensors for image ids and captions.
     """
-    image_ids = tf.convert_to_tensor(dataset['image_ids'])
-    captions = tf.convert_to_tensor(dataset['captions'])
+    image_ids, captions = list(), list()
+    for i in range(len(dataset['captions'])):
+        # Checks if the length tokenized captions is less than or equal to 40.
+        if len(dataset['captions'][i]) <= 40:
+            image_ids.append(dataset['image_ids'][i])
+            captions.append(dataset['captions'][i])
+    # Converts modified list of image ids into a tensor.
+    image_ids = tf.convert_to_tensor(image_ids)
+    # Converts modified list of captions into a tensor, and pads 0 to the end of each item in the tensor if the length
+    # is less than 40.
     captions = tf.keras.preprocessing.sequence.pad_sequences(captions, padding='post')
     return image_ids, captions
+
+
+def check_directory_existence(directory_path: str,
+                              sub_directory: str) -> str:
+    """Concatenates directory path and sub_directory. Checks if the directory path exists; if not, it will create the
+    directory.
+
+    Args:
+        directory_path: Current directory path
+        sub_directory: Directory that needs to be checked if it exists or not.
+
+    Returns:
+        Newly concatenated directory path
+    """
+    directory_path = '{}/{}'.format(directory_path, sub_directory)
+    # If the concatenated directory path does not exist then the sub directory is created.
+    if not os.path.isdir(directory_path):
+        os.mkdir(directory_path)
+    return directory_path
+
+
+def shuffle_slice_dataset(image_ids: tf.Tensor,
+                          captions: tf.Tensor,
+                          batch_size: int) -> tf.data.Dataset:
+    """Combines the tensors for the image ids and captions, shuffles them and slices them based on batch size.
+
+    Args:
+        image_ids: Tensor which contains image ids for the current data split
+        captions: Tensor which contains captions for the current data split.
+        batch_size: Batch size for training the current model
+    """
+    dataset = tf.data.Dataset.from_tensor_slices((image_ids, captions)).shuffle(len(image_ids))
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+    return dataset
