@@ -1,5 +1,5 @@
 # authors_name = 'Preetham Ganesh'
-# project_title = 'Captioning of Images using Luong Attention Mechanism'
+# project_title = 'Captioning of Images using Attention Mechanism'
 # email = 'preetham.ganesh2015@gmail.com'
 
 
@@ -8,8 +8,10 @@ import pickle
 import json
 import numpy as np
 import os
-from bahdanau_attention_model import Encoder, Decoder1 as bahdanau_decoder_1, Decoder2 as bahdanau_decoder_2, Decoder3 \
-    as bahdanau_decoder_3
+import sys
+from bahdanau_attention_model import Encoder, Decoder1 as bahdanau_decoder_1, Decoder2 as bahdanau_decoder_2, \
+    Decoder3 as bahdanau_decoder_3
+from luong_attention_model import Decoder1 as luong_decoder_1, Decoder2 as luong_decoder_2, Decoder3 as luong_decoder_3
 
 
 def load_json_file(directory_path: str,
@@ -142,14 +144,45 @@ def shuffle_slice_dataset(image_ids: tf.Tensor,
     return dataset
 
 
-def choose_encoder_decoder() -> None:
-    x = 0
+def choose_encoder_decoder(parameters) -> tuple:
+    """Uses attention and model number keys in the parameters, chooses the encoder and decoder model.
+
+    Args:
+        parameters: A dictionary which contains current model configuration details.
+
+    Returns:
+         A tuple which contains the objects for the encoder and decoder models
+    """
+    encoder = Encoder(parameters['embedding_size'], parameters['dropout_rate'])
+    if parameters['attention'] == 'bahdanau_attention' and parameters['model'] == 1:
+        decoder = bahdanau_decoder_1(parameters['embedding_size'], parameters['rnn_size'],
+                                     parameters['target_vocab_size'], parameters['dropout_rate'])
+    elif parameters['attention'] == 'bahdanau_attention' and parameters['model'] == 2:
+        decoder = bahdanau_decoder_2(parameters['embedding_size'], parameters['rnn_size'],
+                                     parameters['target_vocab_size'], parameters['dropout_rate'])
+    elif parameters['attention'] == 'bahdanau_attention' and parameters['model'] == 3:
+        decoder = bahdanau_decoder_3(parameters['embedding_size'], parameters['rnn_size'],
+                                     parameters['target_vocab_size'], parameters['dropout_rate'])
+    elif parameters['attention'] == 'luong_attention' and parameters['model'] == 1:
+        decoder = luong_decoder_1(parameters['embedding_size'], parameters['rnn_size'],
+                                  parameters['target_vocab_size'], parameters['dropout_rate'])
+    elif parameters['attention'] == 'luong_attention' and parameters['model'] == 2:
+        decoder = luong_decoder_2(parameters['embedding_size'], parameters['rnn_size'],
+                                  parameters['target_vocab_size'], parameters['dropout_rate'])
+    elif parameters['attention'] == 'luong_attention' and parameters['model'] == 3:
+        decoder = luong_decoder_3(parameters['embedding_size'], parameters['rnn_size'],
+                                  parameters['target_vocab_size'], parameters['dropout_rate'])
+    else:
+        print('Arguments for attention name or/and model number are not in the list of possible values.')
+        sys.exit()
+    return encoder, decoder
 
 
 def loss_function() -> None:
     x = 0
 
 
+@tf.function
 def train_step() -> None:
     x = 0
 
@@ -169,5 +202,5 @@ def model_testing(test_dataset: tf.data.Dataset,
     x = 0
 
 
-def generate_caption() -> None:
+def generate_captions() -> None:
     x = 0
