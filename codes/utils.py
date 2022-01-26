@@ -8,6 +8,8 @@ import pickle
 import json
 import numpy as np
 import os
+from bahdanau_attention_model import Encoder, Decoder1 as bahdanau_decoder_1, Decoder2 as bahdanau_decoder_2, Decoder3 \
+    as bahdanau_decoder_3
 
 
 def load_json_file(directory_path: str,
@@ -138,3 +140,34 @@ def shuffle_slice_dataset(image_ids: tf.Tensor,
     dataset = tf.data.Dataset.from_tensor_slices((image_ids, captions)).shuffle(len(image_ids))
     dataset = dataset.batch(batch_size, drop_remainder=True)
     return dataset
+
+
+def choose_encoder_decoder() -> None:
+    x = 0
+
+
+def loss_function() -> None:
+    x = 0
+
+
+def train_step() -> None:
+    x = 0
+
+
+def validation_step() -> None:
+    x = 0
+
+
+def model_training_validation(train_dataset: tf.data.Dataset,
+                              validation_dataset: tf.data.Dataset,
+                              parameters: dict) -> None:
+    x = 0
+
+
+def model_testing(test_dataset: tf.data.Dataset,
+                  parameters: dict) -> None:
+    x = 0
+
+
+def generate_caption() -> None:
+    x = 0
