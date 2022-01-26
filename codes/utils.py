@@ -178,8 +178,27 @@ def choose_encoder_decoder(parameters) -> tuple:
     return encoder, decoder
 
 
-def loss_function() -> None:
-    x = 0
+def loss_function(actual_values: tf.Tensor,
+                  predicted_values: tf.Tensor) -> tf.keras.losses.Loss:
+    """Computes the loss value for the current batch of the predicted values based on comparison with actual values.
+
+    Args:
+        actual_values: Tensor which contains the actual values for the current batch.
+        predicted_values: Tensor which contains the predicted values for the current batch.
+
+    Returns:
+        Loss for the current batch.
+    """
+    # Creates the loss object for the Sparse Categorical Crossentropy.
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+    # Performs element-wise equality comparison and returns the truth values.
+    mask = tf.math.logical_not(tf.math.equal(actual_values, 0))
+    # Computes loss for the current batch using actual values and predicted values.
+    current_loss = loss_object(actual_values, predicted_values)
+    # Converts mask into the type the current loss belongs to.
+    mask = tf.cast(mask, dtype=current_loss.dtype)
+    current_loss *= mask
+    return tf.reduce_mean(current_loss)
 
 
 @tf.function
