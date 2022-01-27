@@ -217,7 +217,7 @@ def train_step(input_batch: tf.Tensor,
                optimizer: tf.keras.optimizers.Optimizer,
                start_token_index: int,
                train_loss: tf.keras.metrics.Metric) -> tuple:
-    """Trains the encoder-decoder model using the current input and target batches.
+    """Trains the encoder-decoder model using the current input and target training batches.
 
     Predicts the output for the current input batch, computes loss on comparison with the target batch, and optimizes
     the encoder-decoder based on the computed loss.
@@ -229,7 +229,7 @@ def train_step(input_batch: tf.Tensor,
         decoder: Object for the Decoder model.
         optimizer: Optimizing algorithm which will be used improve the performance of the encoder-decoder model.
         start_token_index: Index value for the start token in the vocabulary.
-        train_loss: A tensorflow metric which computes mean for the total loss of the encoder-decoder model
+        train_loss: A tensorflow metric which computes mean for the train loss of the encoder-decoder model
 
     Returns:
         A tuple which contains updated encoder model, decoder model and mean for train_loss.
@@ -256,8 +256,40 @@ def train_step(input_batch: tf.Tensor,
     return encoder, decoder, train_loss
 
 
-def validation_step() -> None:
-    x = 0
+def validation_step(input_batch: tf.Tensor,
+                    target_batch: tf.Tensor,
+                    encoder: tf.keras.Model,
+                    decoder: tf.keras.Model,
+                    start_token_index: int,
+                    validation_loss: tf.keras.metrics.Metric) -> tf.keras.metrics.Metric:
+    """Validates the encoder-decoder model using the current input and target validation batches.
+
+    Args:
+        input_batch: Current batch for the encoder model which contains the features extracted from the images.
+        target_batch: Current batch for the decoder model which contains the captions for the images.
+        encoder: Object for the Encoder model.
+        decoder: Object for the Decoder model.
+        start_token_index: Index value for the start token in the vocabulary.
+        validation_loss: A tensorflow metric which computes mean for the validation loss of the encoder-decoder model
+
+    Returns:
+        A tuple which contains updated encoder model, decoder model and mean for validation_loss.
+    """
+    loss = 0
+    # Initializes the hidden states from the decoder for each batch.
+    decoder_hidden_states = decoder.initialize_hidden_states(target_batch.shape[0])
+    # First decoder input batch contains just the start token index.
+    decoder_input_batch = tf.expand_dims([start_token_index] * target_batch.shape[0], 1)
+    encoder_out = encoder(input_batch, False)
+    # Passes the encoder features into the decoder for all words in the captions.
+    for i in range(1, target_batch.shape[1]):
+        predicted_batch, decoder_hidden_states = decoder(decoder_input_batch, decoder_hidden_states, encoder_out, False)
+        loss += loss_function(target_batch[:, i], predicted_batch)
+        predicted_batch_ids = tf.argmax(predicted_batch).numpy()
+        # Passes the currently predicted ids into the decoder as input batch.
+        decoder_input_batch = tf.expand_dims(predicted_batch_ids, 1)
+    batch_loss = loss / target_batch.shape[1]
+    validation_loss(batch_loss)
 
 
 def model_training_validation(train_dataset: tf.data.Dataset,
