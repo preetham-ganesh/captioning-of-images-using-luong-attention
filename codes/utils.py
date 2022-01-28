@@ -10,6 +10,8 @@ import tensorflow as tf
 import pickle
 import json
 import numpy as np
+import pandas as pd
+import time
 
 from bahdanau_attention_model import Encoder
 from bahdanau_attention_model import BahdanauDecoder1
@@ -290,17 +292,102 @@ def validation_step(input_batch: tf.Tensor,
         decoder_input_batch = tf.expand_dims(predicted_batch_ids, 1)
     batch_loss = loss / target_batch.shape[1]
     validation_loss(batch_loss)
+    return validation_loss
 
 
 def model_training_validation(train_dataset: tf.data.Dataset,
                               validation_dataset: tf.data.Dataset,
                               parameters: dict) -> None:
-    global global_train_loss, global_validation_loss
+    """Trains and validates the current configuration of the model using the train and validation dataset.
+
+    Args:
+        train_dataset: Images and tokenized captions in the train dataset.
+        validation_dataset: Images and tokenized captions in the validation dataset.
+        parameters: A dictionary which contains current model configuration details.
+    """
+    # Tensorflow metrics which computes the mean of all the elements.
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     validation_loss = tf.keras.metrics.Mean(name='validation_loss')
+    # Chooses the encoder and decoder based on the parameter configuration.
     encoder, decoder = choose_encoder_decoder(parameters)
-    print(type(encoder), type(decoder))
-    print(type(train_loss))
+    # Creates checkpoint and manager for the encoder-decoder model and the optimizer.
+    optimizer = tf.keras.optimizers.Adam()
+    model_directory_path = '../results/{}/model_{}'.format(parameters['attention'], parameters['model_number'])
+    checkpoint_directory = '{}/checkpoints'.format(model_directory_path)
+    checkpoint = tf.train.Checkpoint(optimizer=optimizer, encoder=encoder, decoder=decoder)
+    manager = tf.train.CheckpointManager(checkpoint, directory=checkpoint_directory, max_to_keep=3)
+    # Creates empty dataframe for saving the model training and validation metrics for the current encoder-decoder
+    # model.
+    split_history_dataframe = pd.DataFrame(columns=['epochs', 'train_loss', 'validation_loss'])
+    checkpoint_count = 0
+    best_validation_loss = None
+    history_directory_path = check_directory_existence(model_directory_path, 'history')
+    # Iterates across the epochs for training the encoder-decoder model.
+    for epoch in range(parameters['epochs']):
+        epoch_start_time = time.time()
+        train_loss.reset_states()
+        validation_loss.reset_states()
+        # Iterates across the batches in the train dataset.
+        for (batch, (input_batch, target_batch)) in enumerate(train_dataset.take(parameters['train_steps_per_epoch'])):
+            batch_start_time = time.time()
+            encoder, decoder, train_loss = train_step(input_batch, target_batch, encoder, decoder, optimizer,
+                                                      parameters['start_token_index'], train_loss)
+            batch_end_time = time.time()
+            if batch % 10 == 0:
+                print('Epoch={}, Batch={}, Training Loss={}, Time taken={}'.format(
+                    epoch + 1, batch, round(train_loss.result().numpy(), 3),
+                    round(batch_end_time - batch_start_time, 3)))
+        print()
+        # Iterates across the batches in the validation dataset.
+        for (batch, (input_batch, target_batch)) in enumerate(validation_dataset.take(
+                parameters['validation_steps_per_epoch'])):
+            batch_start_time = time.time()
+            validation_loss = validation_step(input_batch, target_batch, encoder, decoder,
+                                              parameters['start_token_index'], validation_loss)
+            batch_end_time = time.time()
+            if batch % 10 == 0:
+                print('Epoch={}, Batch={}, Validation Loss={}, Time taken={}'.format(
+                    epoch + 1, batch, round(validation_loss.result().numpy(), 3),
+                    round(batch_end_time - batch_start_time, 3)))
+        print()
+        # Updates the complete metrics dataframe with the metrics for the current training and validation metrics.
+        history_dictionary = {'epochs': epoch + 1, 'train_loss': round(train_loss.result().numpy(), 3),
+                              'validation_loss': round(validation_loss.result().numpy(), 3)}
+        split_history_dataframe = split_history_dataframe.append(history_dictionary, ignore_index=True)
+        split_history_dataframe.to_csv(history_directory_path, index=False)
+        epoch_end_time = time.time()
+        print('Epoch={}, Training Loss={}, Validation Loss={}, Time Taken={}'.format(
+            epoch + 1, round(train_loss.result().numpy(), 3), round(validation_loss.result().numpy(), 3),
+            round(epoch_end_time - epoch_start_time, 3)))
+        # If epoch = 1, then best validation loss is replaced with current validation loss, and the checkpoint is saved.
+        if best_validation_loss is None:
+            checkpoint_count = 0
+            best_validation_loss = round(validation_loss.result().numpy(), 3)
+            manager.save()
+            print('Checkpoint saved at {}'.format(checkpoint_directory))
+        # If the best validation loss is higher than current validation loss, the best validation loss is replaced with
+        # current validation loss, and the checkpoint is saved.
+        elif best_validation_loss > round(validation_loss.result().numpy(), 3):
+            checkpoint_count = 0
+            print('Best validation loss changed from {} to {}'.format(best_validation_loss,
+                                                                      round(validation_loss.result().numpy(), 3)))
+            best_validation_loss = round(validation_loss.result().numpy(), 3)
+            manager.save()
+            print('Checkpoint saved at {}'.format(checkpoint_directory))
+            print()
+        # If the best validation loss is not higher than the current validation loss, then the number of times the model
+        # has not improved is incremented by 1.
+        elif checkpoint_count <= 4:
+            checkpoint_count += 1
+            print('Best validation loss did not improve.')
+            print('Checkpoint not saved.')
+            print()
+        # If the number of times the model did not improve is greater than 4, then model is stopped from training
+        # further.
+        else:
+            print('Model did not improve after 4th time. Model stopped from training further.')
+            print()
+            break
 
 
 def model_testing(test_dataset: tf.data.Dataset,
