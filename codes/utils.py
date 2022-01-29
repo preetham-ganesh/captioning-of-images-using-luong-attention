@@ -295,6 +295,27 @@ def validation_step(input_batch: tf.Tensor,
     return validation_loss
 
 
+def image_features_retrieve(batch_image_ids: tf.Tensor) -> tf.Tensor:
+    """Retrieves saved extracted features for image ids in the batch.
+
+    Args:
+        batch_image_ids: A tensor which contains the image ids in the current batch.
+
+    Returns:
+        A tensor which contains extracted features for the image ids in the current batch.
+    """
+    extracted_features = list()
+    # Iterates across the image ids in the current batch.
+    for i in range(len(batch_image_ids)):
+        current_image_features = load_pickle_file('../data/processed_data/images', str(batch_image_ids[i].numpy()))
+        extracted_features.append(current_image_features)
+    extracted_features = tf.convert_to_tensor(extracted_features)
+    # Reshapes the tensor from (batch_size, 1, 64, 2048) to (batch_size, 64, 2048).
+    extracted_features = tf.reshape(extracted_features, [extracted_features.shape[0], extracted_features.shape[2],
+                                                         extracted_features.shape[3]])
+    return extracted_features
+
+
 def model_training_validation(train_dataset: tf.data.Dataset,
                               validation_dataset: tf.data.Dataset,
                               parameters: dict) -> None:
@@ -333,6 +354,7 @@ def model_training_validation(train_dataset: tf.data.Dataset,
         # Iterates across the batches in the train dataset.
         for (batch, (input_batch, target_batch)) in enumerate(train_dataset.take(parameters['train_steps_per_epoch'])):
             batch_start_time = time.time()
+            input_batch = image_features_retrieve(input_batch)
             encoder, decoder, train_loss = train_step(input_batch, target_batch, encoder, decoder, optimizer,
                                                       parameters['start_token_index'], train_loss)
             batch_end_time = time.time()
@@ -345,6 +367,7 @@ def model_training_validation(train_dataset: tf.data.Dataset,
         for (batch, (input_batch, target_batch)) in enumerate(validation_dataset.take(
                 parameters['validation_steps_per_epoch'])):
             batch_start_time = time.time()
+            input_batch = image_features_retrieve(input_batch)
             validation_loss = validation_step(input_batch, target_batch, encoder, decoder,
                                               parameters['start_token_index'], validation_loss)
             batch_end_time = time.time()
@@ -416,6 +439,7 @@ def model_testing(test_dataset: tf.data.Dataset,
     checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
     # Iterates across the batches in the test dataset.
     for (batch, (input_batch, target_batch)) in enumerate(test_dataset.take(parameters['test_steps_per_epoch'])):
+        input_batch = image_features_retrieve(input_batch)
         test_loss = validation_step(input_batch, target_batch, encoder, decoder, parameters['start_token_index'],
                                     test_loss)
     print('Test Loss={}'.format(test_loss.result().numpy()))
