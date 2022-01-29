@@ -10,7 +10,6 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import logging
 
-
 from utils import load_pickle_file
 from utils import convert_dataset
 from utils import check_directory_existence

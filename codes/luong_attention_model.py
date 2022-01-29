@@ -28,7 +28,7 @@ class LuongAttention(tf.keras.Model):
         return context_vector
 
 
-class Decoder1(tf.keras.Model):
+class LuongDecoder1(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Luong
     Attention.
 
@@ -49,7 +49,7 @@ class Decoder1(tf.keras.Model):
                  target_vocab_size: int) -> None:
         """Initializes the layers in the instance based on the embedding_size, rnn_size, dropout_rate, and
         target_vocab_size."""
-        super(Decoder1, self).__init__()
+        super(LuongDecoder1, self).__init__()
         self.attention_layer = LuongAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -74,8 +74,15 @@ class Decoder1(tf.keras.Model):
         x = self.dense_layer_2(x)
         return x, [h, c]
 
+    def initialize_hidden_states(self, batch_size: int,
+                                 rnn_size: int) -> list:
+        """Initializes hidden states h & c in the RNN layer for each batch."""
+        hidden_state_h = tf.zeros((batch_size, rnn_size))
+        hidden_state_c = tf.zeros((batch_size, rnn_size))
+        return [hidden_state_h, hidden_state_c]
 
-class Decoder2(tf.keras.Model):
+
+class LuongDecoder2(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Luong
     Attention.
 
@@ -97,7 +104,7 @@ class Decoder2(tf.keras.Model):
                  target_vocab_size: int) -> None:
         """Initializes the layers in the instance based on the embedding_size, rnn_size, dropout_rate, and
         target_vocab_size."""
-        super(Decoder2, self).__init__()
+        super(LuongDecoder2, self).__init__()
         self.attention_layer = LuongAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer_1 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -125,8 +132,15 @@ class Decoder2(tf.keras.Model):
         x = self.dense_layer_2(x)
         return x, [h, c]
 
+    def initialize_hidden_states(self, batch_size: int,
+                                 rnn_size: int) -> list:
+        """Initializes hidden states h & c in the RNN layer for each batch."""
+        hidden_state_h = tf.zeros((batch_size, rnn_size))
+        hidden_state_c = tf.zeros((batch_size, rnn_size))
+        return [hidden_state_h, hidden_state_c]
 
-class Decoder3(tf.keras.Model):
+
+class LuongDecoder3(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Luong
     Attention.
 
@@ -149,7 +163,7 @@ class Decoder3(tf.keras.Model):
                  target_vocab_size: int) -> None:
         """Initializes the layers in the instance based on the embedding_size, rnn_size, dropout_rate, and
         target_vocab_size."""
-        super(Decoder3, self).__init__()
+        super(LuongDecoder3, self).__init__()
         self.attention_layer = LuongAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer_1 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -179,3 +193,10 @@ class Decoder3(tf.keras.Model):
         x = self.dropout_layer(x, training=training)
         x = self.dense_layer_2(x)
         return x, [h, c]
+
+    def initialize_hidden_states(self, batch_size: int,
+                                 rnn_size: int) -> list:
+        """Initializes hidden states h & c in the RNN layer for each batch."""
+        hidden_state_h = tf.zeros((batch_size, rnn_size))
+        hidden_state_c = tf.zeros((batch_size, rnn_size))
+        return [hidden_state_h, hidden_state_c]
