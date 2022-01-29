@@ -301,9 +301,12 @@ def model_training_validation(train_dataset: tf.data.Dataset,
     """Trains and validates the current configuration of the model using the train and validation dataset.
 
     Args:
-        train_dataset: Images and tokenized captions in the train dataset.
-        validation_dataset: Images and tokenized captions in the validation dataset.
+        train_dataset: Image ids and tokenized captions in the train dataset.
+        validation_dataset: Image ids and tokenized captions in the validation dataset.
         parameters: A dictionary which contains current model configuration details.
+
+    Returns:
+        None.
     """
     # Tensorflow metrics which computes the mean of all the elements.
     train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -392,7 +395,31 @@ def model_training_validation(train_dataset: tf.data.Dataset,
 
 def model_testing(test_dataset: tf.data.Dataset,
                   parameters: dict) -> None:
-    x = 0
+    """Tests the currently trained encoder-decoder model using the test dataset.
+
+    Args:
+        test_dataset: Image ids and tokenized captions in the test dataset.
+        parameters: A dictionary which contains current model configuration details.
+
+    Returns:
+        None.
+    """
+    # Tensorflow metrics which computes the mean of all the elements.
+    test_loss = tf.keras.metrics.Mean(name='test_loss')
+    test_loss.reset_states()
+    # Chooses the encoder and decoder based on the parameter configuration.
+    encoder, decoder = choose_encoder_decoder(parameters)
+    # Creates checkpoint for the encoder-decoder model and restores the last saved checkpoint.
+    model_directory_path = '../results/{}/model_{}'.format(parameters['attention'], parameters['model_number'])
+    checkpoint_directory = '{}/checkpoints'.format(model_directory_path)
+    checkpoint = tf.train.Checkpoint(encoder=encoder, decoder=decoder)
+    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
+    # Iterates across the batches in the test dataset.
+    for (batch, (input_batch, target_batch)) in enumerate(test_dataset.take(parameters['test_steps_per_epoch'])):
+        test_loss = validation_step(input_batch, target_batch, encoder, decoder, parameters['start_token_index'],
+                                    test_loss)
+    print('Test Loss={}'.format(test_loss.result().numpy()))
+    print()
 
 
 def generate_captions() -> None:
