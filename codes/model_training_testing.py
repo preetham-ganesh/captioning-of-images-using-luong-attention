@@ -3,13 +3,21 @@
 # email = 'preetham.ganesh2015@gmail.com'
 
 
+import os
+import sys
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import logging
-import os
-import sys
-from utils import load_pickle_file, convert_dataset, check_directory_existence, save_json_file, shuffle_slice_dataset, \
-    model_training_validation, model_testing
+
+
+from utils import load_pickle_file
+from utils import convert_dataset
+from utils import check_directory_existence
+from utils import save_json_file
+from utils import shuffle_slice_dataset
+from utils import model_training_validation
+from utils import model_testing
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -42,6 +50,7 @@ def main():
     target_vocabulary = tfds.deprecated.text.SubwordTextEncoder.load_from_file('../results/utils/captions_tokenizer')
     parameters = {'target_vocab_size': target_vocabulary.vocab_size + 2, 'embedding_size': 512, 'rnn_size': 512,
                   'batch_size': batch_size, 'epochs': 20, 'attention': attention, 'model_number': model_number,
+                  'dropout_rate': 0.3, 'start_token_index': target_vocabulary.vocab_size,
                   'train_steps_per_epoch': len(train_image_ids) // batch_size,
                   'validation_steps_per_epoch': len(validation_image_ids) // batch_size,
                   'test_steps_per_epoch': len(test_image_ids) // batch_size}
@@ -57,6 +66,7 @@ def main():
     print('No. of Validation steps per epoch: {}'.format(parameters['validation_steps_per_epoch']))
     print('No. of Testing steps: {}'.format(parameters['test_steps_per_epoch']))
     print()
+    print('Model Training started.')
     model_training_validation(train_dataset, validation_dataset, parameters)
     model_testing(test_dataset, parameters)
 
