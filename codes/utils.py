@@ -174,22 +174,23 @@ def choose_encoder_decoder(parameters) -> tuple:
         decoder = BahdanauDecoder3(parameters['embedding_size'], parameters['rnn_size'],
                                    parameters['target_vocab_size'], parameters['dropout_rate'])
     elif parameters['attention'] == 'luong_attention' and parameters['model_number'] == 1:
-        decoder = LuongDecoder1(parameters['embedding_size'], parameters['rnn_size'], parameters['target_vocab_size'],
-                                parameters['dropout_rate'])
+        decoder = LuongDecoder1(parameters['embedding_size'], parameters['rnn_size'], parameters['dropout_rate'],
+                                parameters['target_vocab_size'])
     elif parameters['attention'] == 'luong_attention' and parameters['model_number'] == 2:
-        decoder = LuongDecoder2(parameters['embedding_size'], parameters['rnn_size'], parameters['target_vocab_size'],
-                                parameters['dropout_rate'])
+        decoder = LuongDecoder2(parameters['embedding_size'], parameters['rnn_size'], parameters['dropout_rate'],
+                                parameters['target_vocab_size'])
     elif parameters['attention'] == 'luong_attention' and parameters['model_number'] == 3:
-        decoder = LuongDecoder3(parameters['embedding_size'], parameters['rnn_size'], parameters['target_vocab_size'],
-                                parameters['dropout_rate'])
+        decoder = LuongDecoder3(parameters['embedding_size'], parameters['rnn_size'], parameters['dropout_rate'],
+                                parameters['target_vocab_size'])
     else:
         print('Arguments for attention name or/and model number are not in the list of possible values.')
+        print()
         sys.exit()
     return encoder, decoder
 
 
 def loss_function(actual_values: tf.Tensor,
-                  predicted_values: tf.Tensor) -> tf.keras.losses.Loss:
+                  predicted_values: tf.Tensor) -> tf.Tensor:
     """Computes the loss value for the current batch of the predicted values based on comparison with actual values.
 
     Args:
@@ -214,11 +215,9 @@ def loss_function(actual_values: tf.Tensor,
 @tf.function
 def train_step(input_batch: tf.Tensor,
                target_batch: tf.Tensor,
-               encoder: tf.keras.Model,
-               decoder: tf.keras.Model,
                optimizer: tf.keras.optimizers.Optimizer,
                start_token_index: int,
-               train_loss: tf.keras.metrics.Metric) -> tuple:
+               rnn_size: int) -> None:
     """Trains the encoder-decoder model using the current input and target training batches.
 
     Predicts the output for the current input batch, computes loss on comparison with the target batch, and optimizes
@@ -227,18 +226,16 @@ def train_step(input_batch: tf.Tensor,
     Args:
         input_batch: Current batch for the encoder model which contains the features extracted from the images.
         target_batch: Current batch for the decoder model which contains the captions for the images.
-        encoder: Object for the Encoder model.
-        decoder: Object for the Decoder model.
         optimizer: Optimizing algorithm which will be used improve the performance of the encoder-decoder model.
         start_token_index: Index value for the start token in the vocabulary.
-        train_loss: A tensorflow metric which computes mean for the train loss of the encoder-decoder model
+        rnn_size: No. of units in each LSTM layer.
 
     Returns:
-        A tuple which contains updated encoder model, decoder model and mean for train_loss.
+        None.
     """
     loss = 0
     # Initializes the hidden states from the decoder for each batch.
-    decoder_hidden_states = decoder.initialize_hidden_states(target_batch.shape[0])
+    decoder_hidden_states = decoder.initialize_hidden_states(target_batch.shape[0], rnn_size)
     # First decoder input batch contains just the start token index.
     decoder_input_batch = tf.expand_dims([start_token_index] * target_batch.shape[0], 1)
     with tf.GradientTape() as tape:
@@ -250,36 +247,31 @@ def train_step(input_batch: tf.Tensor,
             loss += loss_function(target_batch[:, i], predicted_batch)
             # Uses teacher forcing method to pass next target word as input into the decoder.
             decoder_input_batch = tf.expand_dims(target_batch[:, i], 1)
-    batch_loss = loss / target_batch.shape[1]
     model_variables = encoder.trainable_variables + decoder.trainable_variables
     gradients = tape.gradient(loss, model_variables)
     optimizer.apply_gradients(zip(gradients, model_variables))
+    batch_loss = (loss / target_batch.shape[1])
     train_loss(batch_loss)
-    return encoder, decoder, train_loss
 
 
 def validation_step(input_batch: tf.Tensor,
                     target_batch: tf.Tensor,
-                    encoder: tf.keras.Model,
-                    decoder: tf.keras.Model,
                     start_token_index: int,
-                    validation_loss: tf.keras.metrics.Metric) -> tf.keras.metrics.Metric:
+                    rnn_size: int) -> None:
     """Validates the encoder-decoder model using the current input and target validation batches.
 
     Args:
         input_batch: Current batch for the encoder model which contains the features extracted from the images.
         target_batch: Current batch for the decoder model which contains the captions for the images.
-        encoder: Object for the Encoder model.
-        decoder: Object for the Decoder model.
         start_token_index: Index value for the start token in the vocabulary.
-        validation_loss: A tensorflow metric which computes mean for the validation loss of the encoder-decoder model
+        rnn_size: No. of units in each LSTM layer.
 
     Returns:
-        A tuple which contains updated encoder model, decoder model and mean for validation_loss.
+        None.
     """
     loss = 0
     # Initializes the hidden states from the decoder for each batch.
-    decoder_hidden_states = decoder.initialize_hidden_states(target_batch.shape[0])
+    decoder_hidden_states = decoder.initialize_hidden_states(target_batch.shape[0], rnn_size)
     # First decoder input batch contains just the start token index.
     decoder_input_batch = tf.expand_dims([start_token_index] * target_batch.shape[0], 1)
     encoder_out = encoder(input_batch, False)
@@ -287,12 +279,9 @@ def validation_step(input_batch: tf.Tensor,
     for i in range(1, target_batch.shape[1]):
         predicted_batch, decoder_hidden_states = decoder(decoder_input_batch, decoder_hidden_states, encoder_out, False)
         loss += loss_function(target_batch[:, i], predicted_batch)
-        predicted_batch_ids = tf.argmax(predicted_batch).numpy()
-        # Passes the currently predicted ids into the decoder as input batch.
-        decoder_input_batch = tf.expand_dims(predicted_batch_ids, 1)
+        decoder_input_batch = tf.expand_dims(target_batch[:, i], 1)
     batch_loss = loss / target_batch.shape[1]
     validation_loss(batch_loss)
-    return validation_loss
 
 
 def image_features_retrieve(batch_image_ids: tf.Tensor) -> tf.Tensor:
@@ -329,6 +318,7 @@ def model_training_validation(train_dataset: tf.data.Dataset,
     Returns:
         None.
     """
+    global encoder, decoder, train_loss, validation_loss
     # Tensorflow metrics which computes the mean of all the elements.
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     validation_loss = tf.keras.metrics.Mean(name='validation_loss')
@@ -346,44 +336,46 @@ def model_training_validation(train_dataset: tf.data.Dataset,
     checkpoint_count = 0
     best_validation_loss = None
     history_directory_path = check_directory_existence(model_directory_path, 'history')
+    history_dictionary_path = '{}/split_history.csv'.format(history_directory_path)
     # Iterates across the epochs for training the encoder-decoder model.
+    print()
     for epoch in range(parameters['epochs']):
         epoch_start_time = time.time()
         train_loss.reset_states()
         validation_loss.reset_states()
         # Iterates across the batches in the train dataset.
-        for (batch, (input_batch, target_batch)) in enumerate(train_dataset.take(parameters['train_steps_per_epoch'])):
+        for (batch, (image_ids, target_batch)) in enumerate(train_dataset.take(parameters['train_steps_per_epoch'])):
             batch_start_time = time.time()
-            input_batch = image_features_retrieve(input_batch)
-            encoder, decoder, train_loss = train_step(input_batch, target_batch, encoder, decoder, optimizer,
-                                                      parameters['start_token_index'], train_loss)
+            # Loads features for the image ids in the current batch.
+            input_batch = image_features_retrieve(image_ids)
+            train_step(input_batch, target_batch, optimizer, parameters['start_token_index'], parameters['rnn_size'])
             batch_end_time = time.time()
             if batch % 10 == 0:
-                print('Epoch={}, Batch={}, Training Loss={}, Time taken={}'.format(
-                    epoch + 1, batch, round(train_loss.result().numpy(), 3),
+                print('Epoch={}, Batch={}, Training loss={}, Time taken={} sec'.format(
+                    epoch + 1, batch, str(round(train_loss.result().numpy(), 3)),
                     round(batch_end_time - batch_start_time, 3)))
         print()
         # Iterates across the batches in the validation dataset.
-        for (batch, (input_batch, target_batch)) in enumerate(validation_dataset.take(
+        for (batch, (image_ids, target_batch)) in enumerate(validation_dataset.take(
                 parameters['validation_steps_per_epoch'])):
             batch_start_time = time.time()
-            input_batch = image_features_retrieve(input_batch)
-            validation_loss = validation_step(input_batch, target_batch, encoder, decoder,
-                                              parameters['start_token_index'], validation_loss)
+            # Loads features for the image ids in the current batch.
+            input_batch = image_features_retrieve(image_ids)
+            validation_step(input_batch, target_batch, parameters['start_token_index'], parameters['rnn_size'])
             batch_end_time = time.time()
             if batch % 10 == 0:
-                print('Epoch={}, Batch={}, Validation Loss={}, Time taken={}'.format(
-                    epoch + 1, batch, round(validation_loss.result().numpy(), 3),
+                print('Epoch={}, Batch={}, Validation loss={}, Time taken={} sec'.format(
+                    epoch + 1, batch, str(round(validation_loss.result().numpy(), 3)),
                     round(batch_end_time - batch_start_time, 3)))
         print()
         # Updates the complete metrics dataframe with the metrics for the current training and validation metrics.
         history_dictionary = {'epochs': epoch + 1, 'train_loss': round(train_loss.result().numpy(), 3),
                               'validation_loss': round(validation_loss.result().numpy(), 3)}
         split_history_dataframe = split_history_dataframe.append(history_dictionary, ignore_index=True)
-        split_history_dataframe.to_csv(history_directory_path, index=False)
+        split_history_dataframe.to_csv(history_dictionary_path, index=False)
         epoch_end_time = time.time()
-        print('Epoch={}, Training Loss={}, Validation Loss={}, Time Taken={}'.format(
-            epoch + 1, round(train_loss.result().numpy(), 3), round(validation_loss.result().numpy(), 3),
+        print('Epoch={}, Training loss={}, Validation loss={}, Time taken={} sec'.format(
+            epoch + 1, str(round(train_loss.result().numpy(), 3)), str(round(validation_loss.result().numpy(), 3)),
             round(epoch_end_time - epoch_start_time, 3)))
         # If epoch = 1, then best validation loss is replaced with current validation loss, and the checkpoint is saved.
         if best_validation_loss is None:
@@ -391,12 +383,13 @@ def model_training_validation(train_dataset: tf.data.Dataset,
             best_validation_loss = round(validation_loss.result().numpy(), 3)
             manager.save()
             print('Checkpoint saved at {}'.format(checkpoint_directory))
+            print()
         # If the best validation loss is higher than current validation loss, the best validation loss is replaced with
         # current validation loss, and the checkpoint is saved.
         elif best_validation_loss > round(validation_loss.result().numpy(), 3):
             checkpoint_count = 0
-            print('Best validation loss changed from {} to {}'.format(best_validation_loss,
-                                                                      round(validation_loss.result().numpy(), 3)))
+            print('Best validation loss changed from {} to {}'.format(str(best_validation_loss, 3),
+                                                                      str(round(validation_loss.result().numpy(), 3))))
             best_validation_loss = round(validation_loss.result().numpy(), 3)
             manager.save()
             print('Checkpoint saved at {}'.format(checkpoint_directory))
@@ -412,7 +405,6 @@ def model_training_validation(train_dataset: tf.data.Dataset,
         # further.
         else:
             print('Model did not improve after 4th time. Model stopped from training further.')
-            print()
             break
 
 
@@ -427,9 +419,10 @@ def model_testing(test_dataset: tf.data.Dataset,
     Returns:
         None.
     """
+    global validation_loss
     # Tensorflow metrics which computes the mean of all the elements.
-    test_loss = tf.keras.metrics.Mean(name='test_loss')
-    test_loss.reset_states()
+    validation_loss = tf.keras.metrics.Mean(name='validation_loss')
+    validation_loss.reset_states()
     # Chooses the encoder and decoder based on the parameter configuration.
     encoder, decoder = choose_encoder_decoder(parameters)
     # Creates checkpoint for the encoder-decoder model and restores the last saved checkpoint.
@@ -440,11 +433,6 @@ def model_testing(test_dataset: tf.data.Dataset,
     # Iterates across the batches in the test dataset.
     for (batch, (input_batch, target_batch)) in enumerate(test_dataset.take(parameters['test_steps_per_epoch'])):
         input_batch = image_features_retrieve(input_batch)
-        test_loss = validation_step(input_batch, target_batch, encoder, decoder, parameters['start_token_index'],
-                                    test_loss)
-    print('Test Loss={}'.format(test_loss.result().numpy()))
+        validation_step(input_batch, target_batch, parameters['start_token_index'], parameters['rnn_size'])
+    print('Test Loss={}'.format(validation_loss.result().numpy()))
     print()
-
-
-def generate_captions() -> None:
-    x = 0
