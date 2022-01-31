@@ -1,5 +1,5 @@
 # authors_name = 'Preetham Ganesh'
-# project_title = 'Captioning of Images using Luong Attention Mechanism'
+# project_title = 'Captioning of Images using Attention Mechanism'
 # email = 'preetham.ganesh2015@gmail.com'
 
 
@@ -33,6 +33,7 @@ def main():
     validation_annotations = load_pickle_file('../data/tokenized_data/annotations', 'validation')
     test_annotations = load_pickle_file('../data/tokenized_data/annotations', 'test')
     print('Datasets loaded.')
+    print()
     print('No. of captions in the train dataset: {}'.format(len(train_annotations['captions'])))
     print('No. of captions in the validation dataset: {}'.format(len(validation_annotations['captions'])))
     print('No. of captions in the test dataset: {}'.format(len(test_annotations['captions'])))
@@ -41,6 +42,7 @@ def main():
     validation_image_ids, validation_captions = convert_dataset(validation_annotations)
     test_image_ids, test_captions = convert_dataset(test_annotations)
     print('Converts dataset into tensors.')
+    print()
     print('Shape of train captions: {}'.format(train_captions.shape))
     print('Shape of validation captions: {}'.format(validation_captions.shape))
     print('Shape of test captions: {}'.format(test_captions.shape))
@@ -61,12 +63,14 @@ def main():
     validation_dataset = shuffle_slice_dataset(validation_image_ids, validation_captions, batch_size)
     test_dataset = shuffle_slice_dataset(test_image_ids, test_captions, batch_size)
     print('Shuffled & Sliced the datasets.')
+    print()
     print('No. of Training steps per epoch: {}'.format(parameters['train_steps_per_epoch']))
     print('No. of Validation steps per epoch: {}'.format(parameters['validation_steps_per_epoch']))
     print('No. of Testing steps: {}'.format(parameters['test_steps_per_epoch']))
     print()
     print('Model Training started.')
     model_training_validation(train_dataset, validation_dataset, parameters)
+    print()
     model_testing(test_dataset, parameters)
 
 
