@@ -5,7 +5,8 @@
 
 import pandas as pd
 from collections import Counter
-from utils import save_pickle_file
+
+from utils import save_json_file
 
 
 def lines_to_text(sentences_list: list,
@@ -27,7 +28,7 @@ def lines_to_text(sentences_list: list,
         if i == len(sentences_list) - 1:
             sentences_text += str(sentences_list[i])
         else:
-            sentences_text += str(sentences_list[i]) + separator
+            sentences_text += str(sentences_list[i]) + ' ' + separator + ' '
     return sentences_text
 
 
@@ -69,7 +70,8 @@ def find_rare_words(words_count: dict) -> dict:
     for word in words_count.keys():
         # If current word is not in rare word, then added to frequent words dictionary.
         if word not in rare_words:
-            new_words_count[word] = words_count[word]
+            if word != '' and word != ' ':
+                new_words_count[word] = words_count[word]
     return new_words_count
 
 
@@ -151,8 +153,8 @@ def main():
     convert_data_save(processed_test_dataset, oov_handled_test_captions, 'test')
     print('Removed rare words in the test dataset and converted it into a CSV file.')
     print()
-    save_pickle_file(list(processed_train_frequent_words.keys()), '../results/', 'train_captions_frequent_words')
-    print('Saved train_captions_frequent_words list at ../results')
+    save_json_file(processed_train_frequent_words, '../results/utils', 'train_captions_frequent_words_count')
+    print('Saved train_captions_frequent_words_count list at ../results/utils')
     print()
 
 
