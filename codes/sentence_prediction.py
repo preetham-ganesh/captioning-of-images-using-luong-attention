@@ -87,7 +87,7 @@ def predict_caption_dataset(attention: str,
     captions_tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(
         '{}/results/utils/captions_tokenizer'.format('..'))
     current_data_split_predictions = pd.DataFrame(columns=['image_id', 'target_caption', 'predicted_caption'])
-    for i in range(10):
+    for i in range(image_ids.shape[0]):
         current_image_features = load_pickle_file('../data/processed_data/images', str(image_ids[i].numpy()))
         current_predicted_caption = predict_caption(current_image_features, parameters, captions_tokenizer, '..')
         current_target_caption_indexes = captions[i, :]
