@@ -26,12 +26,14 @@ tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 def predict_caption(image_features: tf.Tensor,
                     parameters: dict,
+                    captions_tokenizer: tfds.deprecated.text.SubwordTextEncoder,
                     prediction_stage: str) -> str:
     """Predicts caption for the current image's extracted features using the current model configuration.
 
     Args:
         image_features: The features extracted for the current image using the pre-trained InceptionV3 model.
         parameters: A dictionary which contains current model configuration details.
+        captions_tokenizer: A TFDS tokenizer trained on the captions in the trained dataset.
         prediction_stage: Location from where the function is being called.
 
     Returns:
@@ -40,9 +42,6 @@ def predict_caption(image_features: tf.Tensor,
     # Chooses the encoder and decoder based on the parameter configuration.
     encoder, decoder = choose_encoder_decoder(parameters)
     predicted_caption_indexes = []
-    # Loads trained tokenizer for captions
-    captions_tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(
-        '{}/results/utils/captions_tokenizer'.format(prediction_stage))
     # Creates checkpoint for the encoder-decoder model and restores the last saved checkpoint.
     model_directory_path = '{}/results/{}/model_{}'.format(prediction_stage, parameters['attention'],
                                                            parameters['model_number'])
@@ -64,6 +63,7 @@ def predict_caption(image_features: tf.Tensor,
         if captions_tokenizer.vocab_size + 1 == predicted_id:
             break
     predicted_caption_indexes = tf.convert_to_tensor(predicted_caption_indexes)
+    # Decodes the prediction captions by getting sub-tokens from the trained captions tokenizer
     predicted_caption = captions_tokenizer.decode([i for i in predicted_caption_indexes.numpy()[1:-1]])
     return predicted_caption
 
@@ -71,24 +71,40 @@ def predict_caption(image_features: tf.Tensor,
 def predict_caption_dataset(attention: str,
                             model: str,
                             data_split: str) -> None:
+    """Predicts captions for all the images in the dataset for the current data split.
+
+    Args:
+        attention: Name of the current attention.
+        model: Name of the current model.
+        data_split: Name of the data for the current split.
+
+    Returns:
+        None.
+    """
     annotations = load_pickle_file('../data/tokenized_data/annotations', data_split)
     image_ids, captions = convert_dataset(annotations)
-    directory_path = check_directory_existence('../results', attention)
-    directory_path = check_directory_existence(directory_path, 'model_{}'.format(model))
-    directory_path = check_directory_existence(directory_path, 'utils')
-    parameters = load_json_file(directory_path, 'parameters')
+    parameters = load_json_file('../results/{}/model_{}/utils'.format(attention, model), 'parameters')
     captions_tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(
         '{}/results/utils/captions_tokenizer'.format('..'))
-    for i in range(1):
-        print(image_ids[i].numpy())
+    current_data_split_predictions = pd.DataFrame(columns=['image_id', 'target_caption', 'predicted_caption'])
+    for i in range(10):
         current_image_features = load_pickle_file('../data/processed_data/images', str(image_ids[i].numpy()))
-        predict_caption(current_image_features, parameters, '..')
-        current_caption = captions[i, :]
-        target_caption = captions_tokenizer.decode([j for j in current_caption[1:-1] if j != captions_tokenizer.vocab_size + 1])
-        print(target_caption)
+        current_predicted_caption = predict_caption(current_image_features, parameters, captions_tokenizer, '..')
+        current_target_caption_indexes = captions[i, :]
+        # Decodes the prediction captions by getting sub-tokens from the trained captions tokenizer
+        current_target_caption = captions_tokenizer.decode([j for j in current_target_caption_indexes[1:-1]
+                                                            if j != captions_tokenizer.vocab_size + 1])
+        current_predictions = {'image_id': str(image_ids[i].numpy()), 'target_caption': current_target_caption,
+                               'predicted_caption': current_predicted_caption}
+        current_data_split_predictions = current_data_split_predictions.append(current_predictions, ignore_index=True)
+    directory_path = check_directory_existence('../results/{}/model_{}'.format(attention, model), 'predictions')
+    current_data_split_predictions.to_csv('{}/{}.csv'.format(directory_path, data_split), index=False)
+    print('Finished predicting captions for {} model_{} for the {} data.'.format(attention, model, data_split))
+    print()
 
 
 def main():
+    print()
     attention = sys.argv[1]
     model = sys.argv[2]
     data_split = sys.argv[3]
