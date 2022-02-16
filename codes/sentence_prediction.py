@@ -84,6 +84,7 @@ def predict_caption_dataset(attention: str,
     annotations = load_pickle_file('../data/tokenized_data/annotations', data_split)
     image_ids, captions = convert_dataset(annotations)
     parameters = load_json_file('../results/{}/model_{}/utils'.format(attention, model), 'parameters')
+    # Loads the trained tokenizer for the captions.
     captions_tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(
         '{}/results/utils/captions_tokenizer'.format('..'))
     current_data_split_predictions = pd.DataFrame(columns=['image_id', 'target_caption', 'predicted_caption'])
@@ -94,9 +95,13 @@ def predict_caption_dataset(attention: str,
         # Decodes the prediction captions by getting sub-tokens from the trained captions tokenizer
         current_target_caption = captions_tokenizer.decode([j for j in current_target_caption_indexes[1:-1]
                                                             if j != captions_tokenizer.vocab_size + 1])
+        print('Image id: {}'.format(str(image_ids[i].numpy())))
+        print('Target caption: {}'.format(current_target_caption))
+        print('Predicted caption: {}'.format(current_predicted_caption))
         current_predictions = {'image_id': str(image_ids[i].numpy()), 'target_caption': current_target_caption,
                                'predicted_caption': current_predicted_caption}
         current_data_split_predictions = current_data_split_predictions.append(current_predictions, ignore_index=True)
+        print()
     directory_path = check_directory_existence('../results/{}/model_{}'.format(attention, model), 'predictions')
     current_data_split_predictions.to_csv('{}/{}.csv'.format(directory_path, data_split), index=False)
     print('Finished predicting captions for {} model_{} for the {} data.'.format(attention, model, data_split))
