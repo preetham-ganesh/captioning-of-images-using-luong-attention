@@ -5,6 +5,7 @@
 
 import tensorflow_datasets as tfds
 import pandas as pd
+
 from utils import save_pickle_file
 
 
@@ -23,7 +24,7 @@ def per_dataset_tokenizer(captions_tokenizer: tfds.deprecated.text.SubwordTextEn
     """
     # Encodes all sentences in the dataset by adding a start token and end token in every sentence.
     tokenized_captions = [[captions_tokenizer.vocab_size] + captions_tokenizer.encode(i) +
-                          [captions_tokenizer.vocab_size] for i in list(dataset['captions'])]
+                          [captions_tokenizer.vocab_size + 1] for i in list(dataset['captions'])]
     tokenized_data = {'image_ids': list(dataset['image_ids']), 'captions': tokenized_captions}
     save_pickle_file(tokenized_data, '../data/tokenized_data/annotations/', data_split)
 
