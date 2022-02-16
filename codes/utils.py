@@ -33,7 +33,7 @@ def load_json_file(directory_path: str,
     Returns:
         Loaded JSON file.
     """
-    file_path = '{}/{}'.format(directory_path, file_name)
+    file_path = '{}/{}.json'.format(directory_path, file_name)
     with open(file_path, 'r') as out_file:
         captions = json.load(out_file)
     out_file.close()
@@ -369,8 +369,8 @@ def model_training_validation(train_dataset: tf.data.Dataset,
                     round(batch_end_time - batch_start_time, 3)))
         print()
         # Updates the complete metrics dataframe with the metrics for the current training and validation metrics.
-        history_dictionary = {'epochs': epoch + 1, 'train_loss': round(train_loss.result().numpy(), 3),
-                              'validation_loss': round(validation_loss.result().numpy(), 3)}
+        history_dictionary = {'epochs': int(epoch + 1), 'train_loss': str(round(train_loss.result().numpy(), 3)),
+                              'validation_loss': str(round(validation_loss.result().numpy(), 3))}
         split_history_dataframe = split_history_dataframe.append(history_dictionary, ignore_index=True)
         split_history_dataframe.to_csv(history_dictionary_path, index=False)
         epoch_end_time = time.time()
@@ -380,17 +380,17 @@ def model_training_validation(train_dataset: tf.data.Dataset,
         # If epoch = 1, then best validation loss is replaced with current validation loss, and the checkpoint is saved.
         if best_validation_loss is None:
             checkpoint_count = 0
-            best_validation_loss = round(validation_loss.result().numpy(), 3)
+            best_validation_loss = str(round(validation_loss.result().numpy(), 3))
             manager.save()
             print('Checkpoint saved at {}'.format(checkpoint_directory))
             print()
         # If the best validation loss is higher than current validation loss, the best validation loss is replaced with
         # current validation loss, and the checkpoint is saved.
-        elif best_validation_loss > round(validation_loss.result().numpy(), 3):
+        elif best_validation_loss > str(round(validation_loss.result().numpy(), 3)):
             checkpoint_count = 0
-            print('Best validation loss changed from {} to {}'.format(str(best_validation_loss, 3),
+            print('Best validation loss changed from {} to {}'.format(str(best_validation_loss),
                                                                       str(round(validation_loss.result().numpy(), 3))))
-            best_validation_loss = round(validation_loss.result().numpy(), 3)
+            best_validation_loss = str(round(validation_loss.result().numpy(), 3))
             manager.save()
             print('Checkpoint saved at {}'.format(checkpoint_directory))
             print()
@@ -434,5 +434,4 @@ def model_testing(test_dataset: tf.data.Dataset,
     for (batch, (input_batch, target_batch)) in enumerate(test_dataset.take(parameters['test_steps_per_epoch'])):
         input_batch = image_features_retrieve(input_batch)
         validation_step(input_batch, target_batch, parameters['start_token_index'], parameters['rnn_size'])
-    print('Test Loss={}'.format(validation_loss.result().numpy()))
-    print()
+    print('Test Loss={}'.format(str(round(validation_loss.result().numpy(), 3))))
