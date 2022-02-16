@@ -12,17 +12,13 @@ class Encoder(tf.keras.Model):
     The features extracted from the images using the pre-trained InceptionV3 model are encoded to the embedding size by
     passing it into a fully connected layer. The encoded output will be passed on to the Bahdanau Attention layer for
     future interpretation.
-
-    Args:
-        dense_layer: Fully connected layer which encodes the extracted features for future interpretation.
-        dropout_layer: Dropout layer which prevents the model from overfitting on the training dataset.
     """
 
     def __init__(self, embedding_size: int,
                  dropout_rate: float) -> None:
         """Initializes the layers in the instance based on the embedding size, and dropout_rate."""
         super(Encoder, self).__init__()
-        self.dense_layer = tf.keras.layers.Dense(embedding_size)
+        self.dense_layer = tf.keras.layers.Dense(embedding_size, activation='relu')
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
 
     def call(self, x: tf.Tensor,
@@ -33,7 +29,7 @@ class Encoder(tf.keras.Model):
         return x
 
 
-class BahdanauAttention(tf.keras.layers.Layer):
+class BahdanauAttention(tf.keras.Model):
     """A local attention model which uses the input and previous timestep's output to predict the output for the current
     timestep.
 
@@ -69,7 +65,7 @@ class BahdanauAttention(tf.keras.layers.Layer):
         return context_vector
 
 
-class Decoder1(tf.keras.Model):
+class BahdanauDecoder1(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Bahdanau
     Attention.
 
@@ -85,10 +81,10 @@ class Decoder1(tf.keras.Model):
     def __init__(self, embedding_size: int,
                  rnn_size: int,
                  target_vocab_size: int,
-                 dropout_rate: float) -> None:
+                 dropout_rate: float):
         """Initializes the layers in the instance based on the embedding size, rnn_size, target_vocab_size, and
         dropout_rate."""
-        super(Decoder1, self).__init__()
+        super(BahdanauDecoder1, self).__init__()
         self.attention_layer = BahdanauAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -96,8 +92,8 @@ class Decoder1(tf.keras.Model):
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
 
     def call(self, x: tf.Tensor,
-             encoder_out: tf.Tensor,
              hidden_states: list,
+             encoder_out: tf.Tensor,
              training: bool) -> tuple:
         """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
         model"""
@@ -120,7 +116,7 @@ class Decoder1(tf.keras.Model):
         return [hidden_state_h, hidden_state_c]
 
 
-class Decoder2(tf.keras.Model):
+class BahdanauDecoder2(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Bahdanau
     Attention.
 
@@ -140,7 +136,7 @@ class Decoder2(tf.keras.Model):
                  dropout_rate: float) -> None:
         """Initializes the layers in the instance based on the embedding size, rnn_size, target_vocab_size, and
         dropout_rate."""
-        super(Decoder2, self).__init__()
+        super(BahdanauDecoder2, self).__init__()
         self.attention_layer = BahdanauAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer_1 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -149,8 +145,8 @@ class Decoder2(tf.keras.Model):
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
 
     def call(self, x: tf.Tensor,
-             encoder_out: tf.Tensor,
              hidden_states: list,
+             encoder_out: tf.Tensor,
              training: bool) -> tuple:
         """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
         model"""
@@ -177,7 +173,7 @@ class Decoder2(tf.keras.Model):
         return [hidden_state_h, hidden_state_c]
 
 
-class Decoder3(tf.keras.Model):
+class BahdanauDecoder3(tf.keras.Model):
     """Decodes the features encoded using the Encoder model and predicts output for the current timestep using Bahdanau
     Attention.
 
@@ -198,7 +194,7 @@ class Decoder3(tf.keras.Model):
                  dropout_rate: float) -> None:
         """Initializes the layers in the instance based on the embedding size, rnn_size, target_vocab_size, and
         dropout_rate."""
-        super(Decoder3, self).__init__()
+        super(BahdanauDecoder3, self).__init__()
         self.attention_layer = BahdanauAttention(rnn_size)
         self.embedding_layer = tf.keras.layers.Embedding(target_vocab_size, embedding_size)
         self.rnn_layer_1 = tf.keras.layers.LSTM(rnn_size, return_state=True, return_sequences=True)
@@ -208,8 +204,8 @@ class Decoder3(tf.keras.Model):
         self.dropout_layer = tf.keras.layers.Dropout(rate=dropout_rate)
 
     def call(self, x: tf.Tensor,
-             encoder_out: tf.Tensor,
              hidden_states: list,
+             encoder_out: tf.Tensor,
              training: bool) -> tuple:
         """Input for current timestep, encoder output, and hidden states are passed through the layers in the decoder
         model"""
