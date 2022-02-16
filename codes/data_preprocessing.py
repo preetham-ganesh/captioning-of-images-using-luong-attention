@@ -3,14 +3,16 @@
 # email = 'preetham.ganesh2015@gmail.com'
 
 
-import numpy as np
-import tensorflow as tf
 import os
+
+import numpy as np
+import logging
+import tensorflow as tf
 import unicodedata
 import re
-import logging
 import pandas as pd
 from sklearn.model_selection import train_test_split
+
 from utils import load_json_file
 from utils import save_pickle_file
 
