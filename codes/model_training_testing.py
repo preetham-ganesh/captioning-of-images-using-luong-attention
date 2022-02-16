@@ -72,6 +72,7 @@ def main():
     model_training_validation(train_dataset, validation_dataset, parameters)
     print()
     model_testing(test_dataset, parameters)
+    print()
 
 
 if __name__ == '__main__':
