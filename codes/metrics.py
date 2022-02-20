@@ -64,22 +64,46 @@ def calculate_metrics_mean(current_data_split_mean_metrics: pd.DataFrame,
 def per_model_calculate_metrics(data_split: list,
                                 attention: list,
                                 model: list) -> None:
+    """Calculates the mean of the metrics for every target and predicted sentence in all data splits.
+
+    Args:
+        data_split: A list which contains data split used for evaluating the models.
+        attention: A list which contains the names of the attention models used.
+        model: A list which contains the number of the models used.
+
+    Returns:
+        None.
+    """
     metric_features = ['bleu_score', 'meteor_score', 'nist_score', 'chrf_score', 'gleu_score']
+    # Iterates across the data splits used for evaluating the models.
     for i in range(len(data_split)):
+        # Creates an empty dataframe for storing the mean of all metrics for the current data split.
         current_data_split_mean_metrics = pd.DataFrame(columns=['attention', 'model'] + metric_features)
+        # Iterates across the different model configurations used for developing the models.
         for j in range(len(attention)):
             for k in range(len(model)):
                 current_data_split_model_predictions = pd.read_csv(
-                    '../results/{}/model_{}/predictions/{}.csv'.format(attention[i], model[j], data_split[k]))
+                    '../results/{}/model_{}/predictions/{}.csv'.format(attention[j], model[k], data_split[i]))
+                # Creates an empty dataframe for storing metrics per sentence.
                 current_data_split_model_metrics = pd.DataFrame(columns=metric_features)
+                # Iterates across the sentences predicted by the current model configuration.
                 for m in range(len(current_data_split_mean_metrics)):
-                    current_target_caption = current_data_split_model_predictions.iloc[m]['target_captions']
-                    current_predicted_caption = current_data_split_model_predictions.iloc[m]['predicted_captions']
+                    current_target_caption = current_data_split_model_predictions.iloc[m]['target_caption']
+                    current_predicted_caption = current_data_split_model_predictions.iloc[m]['predicted_caption']
+                    # Calculates metrics for current target and predicted captions.
                     current_index_calculated_metrics = calculate_metrics(current_target_caption,
                                                                          current_predicted_caption)
                     current_data_split_model_metrics = current_data_split_model_metrics.append(
-                        current_index_calculated_metrics, ignore_index=False)
-                
+                        current_index_calculated_metrics, ignore_index=True)
+                # Computes mean of metrics for all sentences in the current data split.
+                current_data_split_mean_metrics = calculate_metrics_mean(current_data_split_mean_metrics,
+                                                                         current_data_split_model_metrics,
+                                                                         metric_features, attention[j], model[k])
+        print('Metrics computed for {} data.'.format(data_split[i]))
+        print()
+        print(current_data_split_mean_metrics)
+        current_data_split_mean_metrics.to_csv('../results/utils/{}.csv'.format(data_split[i]), index=False)
+        print()
 
 
 def main():
@@ -88,7 +112,6 @@ def main():
     model = [1, 2, 3]
     data_split = ['validation', 'test']
     per_model_calculate_metrics(data_split, attention, model)
-    print()
 
 
 if __name__ == '__main__':
