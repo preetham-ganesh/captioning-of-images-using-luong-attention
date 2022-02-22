@@ -26,15 +26,13 @@ tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
 def predict_caption(image_features: tf.Tensor,
                     parameters: dict,
-                    captions_tokenizer: tfds.deprecated.text.SubwordTextEncoder,
-                    prediction_stage: str) -> str:
+                    captions_tokenizer: tfds.deprecated.text.SubwordTextEncoder) -> str:
     """Predicts caption for the current image's extracted features using the current model configuration.
 
     Args:
         image_features: The features extracted for the current image using the pre-trained InceptionV3 model.
         parameters: A dictionary which contains current model configuration details.
         captions_tokenizer: A TFDS tokenizer trained on the captions in the trained dataset.
-        prediction_stage: Location from where the function is being called.
 
     Returns:
         A string which contains the predicted caption for the current image.
@@ -43,8 +41,7 @@ def predict_caption(image_features: tf.Tensor,
     encoder, decoder = choose_encoder_decoder(parameters)
     predicted_caption_indexes = []
     # Creates checkpoint for the encoder-decoder model and restores the last saved checkpoint.
-    model_directory_path = '{}/results/{}/model_{}'.format(prediction_stage, parameters['attention'],
-                                                           parameters['model_number'])
+    model_directory_path = '../results/{}/model_{}'.format(parameters['attention'], parameters['model_number'])
     checkpoint_directory = '{}/checkpoints'.format(model_directory_path)
     checkpoint = tf.train.Checkpoint(encoder=encoder, decoder=decoder)
     checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
@@ -86,11 +83,11 @@ def predict_caption_dataset(attention: str,
     parameters = load_json_file('../results/{}/model_{}/utils'.format(attention, model), 'parameters')
     # Loads the trained tokenizer for the captions.
     captions_tokenizer = tfds.deprecated.text.SubwordTextEncoder.load_from_file(
-        '{}/results/utils/captions_tokenizer'.format('..'))
+        '../results/utils/captions_tokenizer')
     current_data_split_predictions = pd.DataFrame(columns=['image_id', 'target_caption', 'predicted_caption'])
     for i in range(image_ids.shape[0]):
         current_image_features = load_pickle_file('../data/processed_data/images', str(image_ids[i].numpy()))
-        current_predicted_caption = predict_caption(current_image_features, parameters, captions_tokenizer, '..')
+        current_predicted_caption = predict_caption(current_image_features, parameters, captions_tokenizer)
         current_target_caption_indexes = captions[i, :]
         # Decodes the prediction captions by getting sub-tokens from the trained captions tokenizer
         current_target_caption = captions_tokenizer.decode([j for j in current_target_caption_indexes[1:-1]
