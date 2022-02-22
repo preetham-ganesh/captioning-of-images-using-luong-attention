@@ -1,0 +1,7 @@
+attention,model,bleu_score,meteor_score,nist_score,chrf_score,gleu_score
+bahdanau_attention,1,,,,,
+bahdanau_attention,2,0.080004,0.095238,1.203116,0.101443,0.185393
+bahdanau_attention,3,0.182296,0.256101,1.885771,0.175007,0.27072
+luong_attention,1,0.288201,0.261231,3.49795,0.213437,0.368991
+luong_attention,2,0.325962,0.313795,3.337022,0.25383,0.39076
+luong_attention,3,0.293564,0.222995,3.341648,0.220657,0.359831

@@ -1,0 +1,14 @@
+{
+    "target_vocab_size": 2068,
+    "embedding_size": 512,
+    "rnn_size": 512,
+    "batch_size": 64,
+    "epochs": 20,
+    "attention": "luong_attention",
+    "model_number": 1,
+    "dropout_rate": 0.3,
+    "start_token_index": 2066,
+    "train_steps_per_epoch": 1846,
+    "validation_steps_per_epoch": 39,
+    "test_steps_per_epoch": 39
+}
